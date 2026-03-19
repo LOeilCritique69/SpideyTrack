@@ -31,12 +31,12 @@ jobs:
           playwright install-deps chromium
 
       - name: Run daily guess
-        run: python tweet.py
+        run: python Marveldle/tweet.py
 
       - name: Commit & push results
         run: |
           git config user.name  "SpideyTrack Bot"
           git config user.email "bot@spideytrack"
-          git add results.json images/
-          git diff --staged --quiet || git commit -m "Day $(cat day.txt) — $(date '+%Y-%m-%d')"
+          git add Marveldle/marveldle/results.json Marveldle/marveldle/images/
+          git diff --staged --quiet || git commit -m "Day $(cat Marveldle/day.txt) — $(date '+%Y-%m-%d')"
           git push -f origin main
