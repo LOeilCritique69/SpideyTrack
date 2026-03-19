@@ -35,4 +35,4 @@ jobs:
           git config user.email "bot@spideytrack"
           git add results.json images/
           git diff --staged --quiet || git commit -m "Day $(cat day.txt) — $(date '+%Y-%m-%d')"
-          git push
+          git push -f origin main
