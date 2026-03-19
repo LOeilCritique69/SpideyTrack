@@ -5,6 +5,10 @@ on:
     - cron: '0 2 * * *'   # Tous les jours à 2h00 UTC
   workflow_dispatch:        # Lancement manuel depuis GitHub si besoin
 
+
+permissions:
+  contents: write
+  
 jobs:
   daily-guess:
     runs-on: ubuntu-latest
