@@ -6,8 +6,8 @@ import datetime
 
 URL          = "https://marveldle.com/character/audiovisual/guess"
 GUESS_PREFIX = "Spider-Ma"
-IMAGES_DIR   = "images"
-RESULTS_FILE = "results.json"
+IMAGES_DIR   = "marveldle/images"
+RESULTS_FILE = "marveldle/results.json"
 TODAY_FILE   = "last_run.txt"
 DAY_FILE     = "day.txt"
 
@@ -33,7 +33,7 @@ if os.path.exists(DAY_FILE):
     with open(DAY_FILE, "r") as f:
         today_day = int(f.read().strip())
 else:
-    today_day = 37  # valeur par défaut au premier lancement
+    today_day = 56
 
 print(f"🎯 Jour d'aujourd'hui : {today_day}")
 
@@ -52,24 +52,25 @@ if os.path.exists(RESULTS_FILE):
 # ════════════════════════════════════════════════════════════════
 if str(today_day) in results:
     print(f"⚠️  Jour {today_day} déjà présent dans results.json — doublon évité.")
-    # Supprimer le screenshot si il a été créé par erreur
-    shot_path = f"images/day_{today_day:03}.png"
-    # On ne touche pas au screenshot existant, juste on ne rejoue pas
     exit()
 
 # ════════════════════════════════════════════════════════════════
 # 5. JOUER avec Playwright
 # ════════════════════════════════════════════════════════════════
 os.makedirs(IMAGES_DIR, exist_ok=True)
-screenshot_path = f"images/day_{today_day:03}.png"
 
-# Vérifier si le screenshot existe déjà (doublon fichier)
+# Chemin physique pour sauvegarder le screenshot
+screenshot_path = f"marveldle/images/day_{today_day:03}.png"
+# Chemin stocké dans results.json — relatif à marveldle.html
+shot_for_html   = f"marveldle/images/day_{today_day:03}.png"
+
 if os.path.exists(screenshot_path):
     print(f"⚠️  Screenshot {screenshot_path} existe déjà — suppression avant nouveau screenshot.")
     os.remove(screenshot_path)
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False)
+    is_ci   = os.environ.get('CI') == 'true'
+    browser = p.chromium.launch(headless=is_ci)
     page    = browser.new_page()
     page.goto(URL)
 
@@ -108,12 +109,12 @@ with sync_playwright() as p:
     browser.close()
 
 # ════════════════════════════════════════════════════════════════
-# 6. ÉCRIRE dans results.json (sans doublon)
+# 6. ÉCRIRE dans results.json
 # ════════════════════════════════════════════════════════════════
 results[str(today_day)] = {
     "date":       today_iso,
     "result":     is_spiderman,
-    "screenshot": screenshot_path
+    "screenshot": shot_for_html
 }
 
 with open(RESULTS_FILE, "w", encoding="utf-8") as f:

@@ -8,26 +8,20 @@
 </head>
 <body>
 
-<!-- HEADER -->
 <header>
   <div class="header-logo-wrap">
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- Corps araignée -->
-      <ellipse cx="18" cy="20" rx="6" ry="7" fill="#d42b20"/>
-      <ellipse cx="18" cy="13" rx="4" ry="4" fill="#d42b20"/>
-      <!-- Pattes gauches -->
-      <line x1="12" y1="17" x2="2"  y2="12" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
-      <line x1="12" y1="20" x2="1"  y2="20" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
-      <line x1="12" y1="23" x2="2"  y2="28" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
-      <!-- Pattes droites -->
-      <line x1="24" y1="17" x2="34" y2="12" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
-      <line x1="24" y1="20" x2="35" y2="20" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
-      <line x1="24" y1="23" x2="34" y2="28" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
-      <!-- Fil -->
-      <line x1="18" y1="9" x2="18" y2="3" stroke="#d42b20" stroke-width="1.5" stroke-linecap="round"/>
-      <!-- Yeux -->
-      <circle cx="16" cy="12" r="1.2" fill="white"/>
-      <circle cx="20" cy="12" r="1.2" fill="white"/>
+      <ellipse cx="18" cy="20" rx="6" ry="7" fill="#f04438"/>
+      <ellipse cx="18" cy="13" rx="4" ry="4" fill="#f04438"/>
+      <line x1="12" y1="17" x2="2"  y2="12" stroke="#f04438" stroke-width="2" stroke-linecap="round"/>
+      <line x1="12" y1="20" x2="1"  y2="20" stroke="#f04438" stroke-width="2" stroke-linecap="round"/>
+      <line x1="12" y1="23" x2="2"  y2="28" stroke="#f04438" stroke-width="2" stroke-linecap="round"/>
+      <line x1="24" y1="17" x2="34" y2="12" stroke="#f04438" stroke-width="2" stroke-linecap="round"/>
+      <line x1="24" y1="20" x2="35" y2="20" stroke="#f04438" stroke-width="2" stroke-linecap="round"/>
+      <line x1="24" y1="23" x2="34" y2="28" stroke="#f04438" stroke-width="2" stroke-linecap="round"/>
+      <line x1="18" y1="9" x2="18" y2="3" stroke="#f04438" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="16" cy="12" r="1.2" fill="#f0eff0"/>
+      <circle cx="20" cy="12" r="1.2" fill="#f0eff0"/>
     </svg>
   </div>
   <h1>Spidey<span>Track</span></h1>
@@ -38,8 +32,7 @@
   </div>
 </header>
 
-<!-- STATS -->
-<div class="stats-bar" id="stats-bar">
+<div class="stats-bar">
   <div class="stat">
     <div class="stat-value" id="stat-total">—</div>
     <div class="stat-label">Jours joués</div>
@@ -58,30 +51,164 @@
   </div>
 </div>
 
-<!-- MAIN -->
 <main>
   <div class="section-header">
     <div class="section-label">Historique des parties</div>
     <div class="section-count" id="section-count">—</div>
   </div>
-  <div class="cards-grid" id="cards-grid">
-    <!-- Rempli par JS -->
-  </div>
+  <div class="cards-grid" id="cards-grid"></div>
 </main>
 
-<!-- LIGHTBOX -->
 <div id="lightbox">
-  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button id="lightbox-close">✕</button>
   <img id="lightbox-img" src="" alt="Screenshot">
 </div>
 
+<footer>
+  <div class="footer-container">
+
+    <!-- LEFT -->
+    <div class="footer-brand">
+      <div class="footer-title">SpideyTrack</div>
+      <div class="footer-desc">
+        Tracker non officiel dédié à l’apparition de Spider-Man sur Marveldle.
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div class="footer-links">
+      <a href="https://marveldle.com/menu" target="_blank">Marveldle</a>
+      <a href="https://l-oeil-critique.netlify.app/" target="_blank">L'Œil Critique</a>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="footer-meta">
+      <div>Projet indépendant</div>
+      <div>© 2026 · Aucun contenu officiel</div>
+    </div>
+
+  </div>
+
+  <div class="footer-bottom">
+    <span>
+      Tous les droits des personnages appartiennent à Marvel et Disney.
+    </span>
+  </div>
+</footer>
+
+<!-- DISCLAIMER POPUP -->
+<div id="disclaimer-overlay">
+  <div id="disclaimer-box">
+    <button id="disclaimer-close">✕</button>
+
+    <div class="disclaimer-title">À propos du site</div>
+
+    <div class="disclaimer-text">
+      Ce site a pour objectif de suivre l’apparition de Spider-Man sur 
+      <a href="https://marveldle.com/menu" target="_blank">Marveldle</a>.
+
+      <br><br>
+
+      SpideyTrack est un projet indépendant non officiel.  
+      Tous les droits relatifs aux personnages et contenus appartiennent à Marvel et Disney.
+
+      <br><br>
+
+      Aucun système de publicité ni de monétisation n’est présent sur ce site.  
+      Il est proposé uniquement à des fins de divertissement.
+    </div>
+
+    <button id="disclaimer-ok">Compris</button>
+  </div>
+</div>
+
+<!-- VICTOIRE -->
+<canvas id="victory-canvas"></canvas>
+<div id="victory-overlay">
+  <div id="victory-box">
+    <div id="victory-spider">
+      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="40" cy="44" rx="14" ry="16" fill="#f04438"/>
+        <ellipse cx="40" cy="28" rx="10" ry="10" fill="#f04438"/>
+        <line x1="26" y1="38" x2="4"  y2="28" stroke="#f04438" stroke-width="3" stroke-linecap="round"/>
+        <line x1="26" y1="44" x2="2"  y2="44" stroke="#f04438" stroke-width="3" stroke-linecap="round"/>
+        <line x1="26" y1="50" x2="4"  y2="62" stroke="#f04438" stroke-width="3" stroke-linecap="round"/>
+        <line x1="54" y1="38" x2="76" y2="28" stroke="#f04438" stroke-width="3" stroke-linecap="round"/>
+        <line x1="54" y1="44" x2="78" y2="44" stroke="#f04438" stroke-width="3" stroke-linecap="round"/>
+        <line x1="54" y1="50" x2="76" y2="62" stroke="#f04438" stroke-width="3" stroke-linecap="round"/>
+        <line x1="40" y1="18" x2="40" y2="6" stroke="#f04438" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="35" cy="26" r="3" fill="#f0eff0"/>
+        <circle cx="45" cy="26" r="3" fill="#f0eff0"/>
+      </svg>
+    </div>
+    <div id="victory-title">SPIDER-MAN !</div>
+    <div id="victory-sub">C'est lui aujourd'hui !</div>
+    <button id="victory-close">Continuer →</button>
+  </div>
+</div>
+
+<style>
+#victory-canvas {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 500;
+  width: 100%; height: 100%;
+}
+#victory-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.78);
+  z-index: 600;
+  align-items: center; justify-content: center;
+  animation: vfade 0.35s ease;
+}
+#victory-overlay.open { display: flex; }
+@keyframes vfade { from { opacity:0 } to { opacity:1 } }
+#victory-box {
+  background: #18181b;
+  border: 2px solid #f04438;
+  border-radius: 16px;
+  padding: 40px 48px;
+  text-align: center;
+  animation: vpop 0.45s cubic-bezier(0.34,1.56,0.64,1);
+  max-width: 340px; width: 90%;
+}
+@keyframes vpop { from { transform:scale(0.5); opacity:0 } to { transform:scale(1); opacity:1 } }
+#victory-spider {
+  width: 80px; height: 80px;
+  margin: 0 auto 16px;
+  animation: vspin 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.2s both;
+}
+@keyframes vspin { from { transform:scale(0) rotate(-180deg) } to { transform:scale(1) rotate(0) } }
+#victory-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.8rem; letter-spacing: 0.06em;
+  color: #f04438; line-height: 1; margin-bottom: 8px;
+}
+#victory-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem; color: #8e8e99;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 24px;
+}
+#victory-close {
+  background: #f04438; color: #fff;
+  border: none; border-radius: 6px;
+  padding: 10px 24px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem; letter-spacing: 0.08em;
+  text-transform: uppercase; cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+#victory-close:hover  { opacity: 0.85; }
+#victory-close:active { transform: scale(0.96); }
+</style>
+
 <script>
 // ============================================================
-// DONNÉES MANUELLES pour les jours passés (19-55)
-// Remplace null par true (Spider-Man) ou false (pas lui)
+// RÉSULTATS MANUELS — jours 1 à 36
+// Remplace false par true si Spider-Man était le perso ce jour-là
 // ============================================================
 const MANUAL_RESULTS = {
-  // ← remplace null par true ou false pour chaque jour
   1: false,
   2: false,
   3: false,
@@ -116,93 +243,66 @@ const MANUAL_RESULTS = {
   32: false,
   33: false,
   34: false,
-  35: false,
-  36: false,
 };
 
 // ============================================================
-// CHARGEMENT : results.json (écrit par Python) + images/
+// CHARGEMENT
 // ============================================================
 async function loadData() {
-  // 1. Charger results.json
+  // results.json est dans marveldle/results.json
   let jsonData = {};
   try {
-    const res = await fetch('results.json');
-    if (res.ok) jsonData = await res.json();
+    const r = await fetch('marveldle/results.json');
+    if (r.ok) jsonData = await r.json();
   } catch (_) {}
 
-  // 2. Découvrir les images existantes via fetch HEAD (jours 1 → 100)
-  const foundImages = new Set();
-  await Promise.all(
-    Array.from({ length: 100 }, (_, i) => i + 1).map(async n => {
-      try {
-        const path = `images/day_${String(n).padStart(3,'0')}.png`;
-        const res  = await fetch(path, { method: 'HEAD' });
-        if (res.ok) foundImages.add(n);
-      } catch (_) {}
-    })
-  );
+  // Fetch HEAD uniquement sur les jours connus
+  const manualKeys = Object.keys(MANUAL_RESULTS).map(Number);
+  const jsonKeys   = Object.keys(jsonData).map(Number);
+  const toCheck    = [...new Set([...manualKeys, ...jsonKeys])];
 
-  // 3. Fusionner tout
+  const foundImages = new Set();
+  await Promise.all(toCheck.map(async n => {
+    try {
+      const r = await fetch(`marveldle/images/day_${String(n).padStart(3,'0')}.png`, { method: 'HEAD' });
+      if (r.ok) foundImages.add(n);
+    } catch (_) {}
+  }));
+
   const allDays = new Map();
 
-  // Jours depuis MANUAL_RESULTS (1→36) — image si trouvée
+  // Jours manuels (1→36)
   for (const [key, result] of Object.entries(MANUAL_RESULTS)) {
     const n = parseInt(key);
     allDays.set(n, {
-      day:        n,
-      date:       null,
-      result:     result,
-      screenshot: foundImages.has(n) ? `images/day_${String(n).padStart(3,'0')}.png` : null,
-      today:      false,
+      day: n, date: null, result,
+      screenshot: foundImages.has(n) ? `marveldle/images/day_${String(n).padStart(3,'0')}.png` : null,
+      today: false,
     });
   }
 
-  // Jours avec image trouvée hors MANUAL_RESULTS (37+)
-  foundImages.forEach(n => {
-    if (!allDays.has(n)) {
-      allDays.set(n, {
-        day:        n,
-        date:       null,
-        result:     null,
-        screenshot: `images/day_${String(n).padStart(3,'0')}.png`,
-        today:      false,
-      });
-    }
-  });
-
-  // results.json écrase/complète (jours joués par Python)
-  Object.entries(jsonData).forEach(([key, val]) => {
+  // Jours Python — prioritaires, écrasent les manuels
+  for (const [key, val] of Object.entries(jsonData)) {
     const n = parseInt(key);
+    const d = new Date();
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     allDays.set(n, {
-      day:        n,
-      date:       val.date,
-      result:     val.result,
-      screenshot: val.screenshot,
-      today:      val.date === new Date().toISOString().slice(0,10),
+      day: n, date: val.date, result: val.result,
+      screenshot: val.screenshot, today: val.date === todayStr,
     });
-  });
+  }
 
-  // Calcul des dates pour les jours sans date (archives + MANUAL_RESULTS)
-  // On cherche le jour de référence : le plus grand jour dans results.json
-  // et sa date, puis on recule d'un jour pour chaque jour précédent.
+  // Calcul des dates manquantes depuis le jour de référence
   const refEntries = Object.entries(jsonData);
   if (refEntries.length > 0) {
-    // Trouver le jour max dans results.json
-    const refDay  = Math.max(...refEntries.map(([k]) => parseInt(k)));
+    const refDay = Math.max(...refEntries.map(([k]) => parseInt(k)));
     const [ry, rm, rd] = jsonData[String(refDay)].date.split('-').map(Number);
-    const refDate = new Date(ry, rm - 1, rd); // date locale, pas UTC
-
+    const refDate = new Date(ry, rm - 1, rd);
     allDays.forEach((entry, n) => {
       if (!entry.date) {
-        // Calculer la date : refDate - (refDay - n) jours
         const d = new Date(refDate);
         d.setDate(d.getDate() - (refDay - n));
-        // Formater en local pour éviter le décalage UTC
-        const yyyy = d.getFullYear();
-        const mm   = String(d.getMonth() + 1).padStart(2, '0');
-        const dd   = String(d.getDate()).padStart(2, '0');
-        entry.date = `${yyyy}-${mm}-${dd}`;
+        entry.date = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       }
     });
   }
@@ -211,7 +311,7 @@ async function loadData() {
 }
 
 // ============================================================
-// RENDU
+// RENDU CARTES
 // ============================================================
 function renderTable(allData) {
   const grid   = document.getElementById('cards-grid');
@@ -231,8 +331,7 @@ function renderTable(allData) {
   document.getElementById('stat-total').textContent  = played.length;
   document.getElementById('stat-yes').textContent    = yes;
   document.getElementById('stat-no').textContent     = no;
-  document.getElementById('stat-streak').textContent =
-    streak + (firstResult !== null ? (firstResult ? ' ✓' : ' ✗') : '');
+  document.getElementById('stat-streak').textContent = streak + (firstResult !== null ? (firstResult ? ' ✓' : ' ✗') : '');
   const sc = document.getElementById('section-count');
   if (sc) sc.textContent = allData.length + ' jours';
 
@@ -241,39 +340,29 @@ function renderTable(allData) {
     const card = document.createElement('div');
     card.className = 'card' + (d.today ? ' today-card' : '');
 
-    // Badge résultat
-    let badgeHtml = '';
-    if (d.result === true)       badgeHtml = '<span class="badge yes">✓ Spider-Man</span>';
-    else if (d.result === false) badgeHtml = '<span class="badge no">✗ Pas lui</span>';
-    else                         badgeHtml = '<span class="badge archive">— Archive</span>';
+    let badge = '';
+    if      (d.result === true)  badge = '<span class="badge yes">✓ Spider-Man</span>';
+    else if (d.result === false) badge = '<span class="badge no">✗ Pas lui</span>';
+    else                         badge = '<span class="badge archive">— Archive</span>';
 
-    // Image
-    const imgHtml = d.screenshot
-      ? `<div class="card-img" onclick="openLightbox('${d.screenshot}')"><img src="${d.screenshot}" alt="Day ${d.day}" loading="lazy"></div>`
+    const img = d.screenshot
+      ? `<div class="card-img" data-src="${d.screenshot}"><img src="${d.screenshot}" alt="Day ${d.day}" loading="lazy"></div>`
       : `<div class="card-img"><span class="card-img-empty">Pas d'image</span></div>`;
 
-    // Tweet
-    const tweetHtml = d.result !== null ? (() => {
-      const emoji = d.result ? '✅' : '❌';
-      const txt = encodeURIComponent(
-        `${emoji} Day ${d.day}: Spider-Man ${d.result ? 'IS' : 'is NOT'} the character of the day! #Marveldle #SpiderMan`
-      );
-      return `<div class="card-foot"><a class="btn-tweet" href="https://twitter.com/intent/tweet?text=${txt}" target="_blank">↗ Tweet</a></div>`;
-    })() : '';
-
-    card.innerHTML = `
-      ${imgHtml}
-      <div class="card-body">
-        <div class="card-top">
-          <div class="card-day">${d.day}</div>
-          ${d.today ? '<span class="today-tag">aujourd&#39;hui</span>' : ''}
-        </div>
-        <div class="card-date">${d.date ? formatDate(d.date) : '—'}</div>
-        ${badgeHtml}
-        ${tweetHtml}
-      </div>`;
+    card.innerHTML = `${img}<div class="card-body">
+      <div class="card-top">
+        <div class="card-day">${d.day}</div>
+        ${d.today ? '<span class="today-tag">aujourd&#39;hui</span>' : ''}
+      </div>
+      <div class="card-date">${d.date ? formatDate(d.date) : '—'}</div>
+      ${badge}
+    </div>`;
 
     grid.appendChild(card);
+  });
+
+  grid.querySelectorAll('.card-img[data-src]').forEach(el => {
+    el.addEventListener('click', () => openLightbox(el.dataset.src));
   });
 }
 
@@ -283,6 +372,9 @@ function formatDate(iso) {
   return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
 }
 
+// ============================================================
+// LIGHTBOX
+// ============================================================
 function openLightbox(src) {
   document.getElementById('lightbox-img').src = src;
   document.getElementById('lightbox').classList.add('open');
@@ -291,56 +383,141 @@ function closeLightbox() {
   document.getElementById('lightbox').classList.remove('open');
   document.getElementById('lightbox-img').src = '';
 }
+document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
 document.getElementById('lightbox').addEventListener('click', e => {
   if (e.target === document.getElementById('lightbox')) closeLightbox();
 });
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeLightbox();
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+// ============================================================
+// ANIMATION VICTOIRE
+// ============================================================
+function triggerVictory() {
+  startParticles();
+  setTimeout(() => {
+    document.getElementById('victory-overlay').classList.add('open');
+  }, 600);
+  document.getElementById('victory-close').addEventListener('click', () => {
+    document.getElementById('victory-overlay').classList.remove('open');
+    stopParticles();
+  });
+}
+
+let animFrame = null;
+
+function startParticles() {
+  const canvas = document.getElementById('victory-canvas');
+  const ctx    = canvas.getContext('2d');
+  function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const colors = ['#f04438','#60a5fa','#f0eff0','#fbbf24','#f04438','#f04438'];
+  const particles = [];
+  for (let i = 0; i < 180; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      vx: (Math.random() - 0.5) * 4,
+      vy: Math.random() * 4 + 2,
+      size: Math.random() * 8 + 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rot: Math.random() * 360,
+      vrot: (Math.random() - 0.5) * 8,
+      shape: Math.random() > 0.4 ? 'rect' : 'web',
+      alpha: 1,
+    });
+  }
+
+  function drawWeb(ctx, x, y, size) {
+    ctx.beginPath();
+    for (let a = 0; a < 6; a++) {
+      const angle = (a / 6) * Math.PI * 2;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(angle) * size, y + Math.sin(angle) * size);
+    }
+    for (let r = 0.33; r <= 1; r += 0.33) {
+      ctx.moveTo(x + Math.cos(0) * size * r, y + Math.sin(0) * size * r);
+      for (let a = 1; a <= 6; a++) {
+        const angle = (a / 6) * Math.PI * 2;
+        ctx.lineTo(x + Math.cos(angle) * size * r, y + Math.sin(angle) * size * r);
+      }
+    }
+    ctx.strokeStyle = ctx.fillStyle;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.rot += p.vrot; p.vy += 0.08;
+      if (p.y < canvas.height + 20) alive = true;
+      if (p.y > canvas.height * 0.7)
+        p.alpha = Math.max(0, 1 - (p.y - canvas.height * 0.7) / (canvas.height * 0.3));
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.color;
+      if (p.shape === 'rect') {
+        ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+      } else {
+        drawWeb(ctx, 0, 0, p.size);
+      }
+      ctx.restore();
+    });
+    if (alive) animFrame = requestAnimationFrame(loop);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  loop();
+}
+
+function stopParticles() {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  const canvas = document.getElementById('victory-canvas');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// ============================================================
+// DISCLAIMER POPUP
+// ============================================================
+function initDisclaimer() {
+  const overlay = document.getElementById('disclaimer-overlay');
+  const closeBtn = document.getElementById('disclaimer-close');
+  const okBtn = document.getElementById('disclaimer-ok');
+
+  // affiché une seule fois
+  if (!localStorage.getItem('disclaimer_seen')) {
+    setTimeout(() => {
+      overlay.classList.add('open');
+    }, 600);
+  }
+
+  function close() {
+    overlay.classList.remove('open');
+    localStorage.setItem('disclaimer_seen', 'true');
+  }
+
+  closeBtn.addEventListener('click', close);
+  okBtn.addEventListener('click', close);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+}
+
+initDisclaimer();
+
+// ============================================================
+// INIT
+// ============================================================
+loadData().then(data => {
+  renderTable(data);
+  const todayWinner = data.find(d => d.today && d.result === true);
+  if (todayWinner) triggerVictory();
 });
-
-// Init
-loadData().then(renderTable);
-
-// ── Theme toggle ──────────────────────────────────────────
-const ICON_MOON = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
-const ICON_SUN  = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
-
-function applyTheme(dark) {
-  document.documentElement.classList.toggle('dark', dark);
-  const icon  = document.getElementById('theme-icon');
-  const label = document.getElementById('theme-label');
-  if (!icon || !label) return;
-  icon.innerHTML = dark ? ICON_SUN : ICON_MOON;
-  icon.setAttribute('fill',         dark ? 'none'         : 'currentColor');
-  icon.setAttribute('stroke',       dark ? 'currentColor' : 'none');
-  icon.setAttribute('stroke-width', dark ? '2'            : '0');
-  label.textContent = dark ? 'Light' : 'Dark';
-  try { localStorage.setItem('spideytrack-theme', dark ? 'dark' : 'light'); } catch(e) {}
-}
-
-function toggleTheme() {
-  applyTheme(!document.documentElement.classList.contains('dark'));
-}
-
-// Lire la préférence sauvegardée ou celle du système
-(function() {
-  let saved = null;
-  try { saved = localStorage.getItem('spideytrack-theme'); } catch(e) {}
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  applyTheme(saved ? saved === 'dark' : prefersDark);
-})();
 </script>
-
-<footer>
-  <div class="footer-inner">
-    <span class="footer-text">Un projet de</span>
-    <a href="https://l-oeil-critique.netlify.app/" target="_blank" class="footer-link">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-      L'Œil Critique
-    </a>
-    <span class="footer-sep">·</span>
-    <span class="footer-text">Actualités &amp; Critiques Cinéma et Séries</span>
-  </div>
-</footer>
 </body>
 </html>
