@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpideyTrack</title>
+<link rel="stylesheet" href="marveldle.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-logo-wrap">
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Corps araignée -->
+      <ellipse cx="18" cy="20" rx="6" ry="7" fill="#d42b20"/>
+      <ellipse cx="18" cy="13" rx="4" ry="4" fill="#d42b20"/>
+      <!-- Pattes gauches -->
+      <line x1="12" y1="17" x2="2"  y2="12" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
+      <line x1="12" y1="20" x2="1"  y2="20" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
+      <line x1="12" y1="23" x2="2"  y2="28" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
+      <!-- Pattes droites -->
+      <line x1="24" y1="17" x2="34" y2="12" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
+      <line x1="24" y1="20" x2="35" y2="20" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
+      <line x1="24" y1="23" x2="34" y2="28" stroke="#d42b20" stroke-width="2" stroke-linecap="round"/>
+      <!-- Fil -->
+      <line x1="18" y1="9" x2="18" y2="3" stroke="#d42b20" stroke-width="1.5" stroke-linecap="round"/>
+      <!-- Yeux -->
+      <circle cx="16" cy="12" r="1.2" fill="white"/>
+      <circle cx="20" cy="12" r="1.2" fill="white"/>
+    </svg>
+  </div>
+  <h1>Spidey<span>Track</span></h1>
+  <div class="header-divider"></div>
+  <div class="header-meta">
+    <div class="header-title">Spider-Man · Daily Tracker</div>
+    <div class="header-sub">Est-ce lui aujourd'hui ?</div>
+  </div>
+</header>
+
+<!-- STATS -->
+<div class="stats-bar" id="stats-bar">
+  <div class="stat">
+    <div class="stat-value" id="stat-total">—</div>
+    <div class="stat-label">Jours joués</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value green" id="stat-yes">—</div>
+    <div class="stat-label">Spider-Man ✓</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value red" id="stat-no">—</div>
+    <div class="stat-label">Spider-Man ✗</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value blue" id="stat-streak">—</div>
+    <div class="stat-label">Streak actuel</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main>
+  <div class="section-header">
+    <div class="section-label">Historique des parties</div>
+    <div class="section-count" id="section-count">—</div>
+  </div>
+  <div class="cards-grid" id="cards-grid">
+    <!-- Rempli par JS -->
+  </div>
+</main>
+
+<!-- LIGHTBOX -->
+<div id="lightbox">
+  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="Screenshot">
+</div>
+
+<script>
+// ============================================================
+// DONNÉES MANUELLES pour les jours passés (19-55)
+// Remplace null par true (Spider-Man) ou false (pas lui)
+// ============================================================
+const MANUAL_RESULTS = {
+  // ← remplace null par true ou false pour chaque jour
+  1: false,
+  2: false,
+  3: false,
+  4: false,
+  5: false,
+  6: false,
+  7: false,
+  8: false,
+  9: false,
+  10: false,
+  11: false,
+  12: false,
+  13: false,
+  14: false,
+  15: false,
+  16: false,
+  17: false,
+  18: false,
+  19: false,
+  20: false,
+  21: false,
+  22: false,
+  23: false,
+  24: false,
+  25: false,
+  26: false,
+  27: false,
+  28: false,
+  29: false,
+  30: false,
+  31: false,
+  32: false,
+  33: false,
+  34: false,
+  35: false,
+  36: false,
+};
+
+// ============================================================
+// CHARGEMENT : results.json (écrit par Python) + images/
+// ============================================================
+async function loadData() {
+  // 1. Charger results.json
+  let jsonData = {};
+  try {
+    const res = await fetch('results.json');
+    if (res.ok) jsonData = await res.json();
+  } catch (_) {}
+
+  // 2. Découvrir les images existantes via fetch HEAD (jours 1 → 100)
+  const foundImages = new Set();
+  await Promise.all(
+    Array.from({ length: 100 }, (_, i) => i + 1).map(async n => {
+      try {
+        const path = `images/day_${String(n).padStart(3,'0')}.png`;
+        const res  = await fetch(path, { method: 'HEAD' });
+        if (res.ok) foundImages.add(n);
+      } catch (_) {}
+    })
+  );
+
+  // 3. Fusionner tout
+  const allDays = new Map();
+
+  // Jours depuis MANUAL_RESULTS (1→36) — image si trouvée
+  for (const [key, result] of Object.entries(MANUAL_RESULTS)) {
+    const n = parseInt(key);
+    allDays.set(n, {
+      day:        n,
+      date:       null,
+      result:     result,
+      screenshot: foundImages.has(n) ? `images/day_${String(n).padStart(3,'0')}.png` : null,
+      today:      false,
+    });
+  }
+
+  // Jours avec image trouvée hors MANUAL_RESULTS (37+)
+  foundImages.forEach(n => {
+    if (!allDays.has(n)) {
+      allDays.set(n, {
+        day:        n,
+        date:       null,
+        result:     null,
+        screenshot: `images/day_${String(n).padStart(3,'0')}.png`,
+        today:      false,
+      });
+    }
+  });
+
+  // results.json écrase/complète (jours joués par Python)
+  Object.entries(jsonData).forEach(([key, val]) => {
+    const n = parseInt(key);
+    allDays.set(n, {
+      day:        n,
+      date:       val.date,
+      result:     val.result,
+      screenshot: val.screenshot,
+      today:      val.date === new Date().toISOString().slice(0,10),
+    });
+  });
+
+  // Calcul des dates pour les jours sans date (archives + MANUAL_RESULTS)
+  // On cherche le jour de référence : le plus grand jour dans results.json
+  // et sa date, puis on recule d'un jour pour chaque jour précédent.
+  const refEntries = Object.entries(jsonData);
+  if (refEntries.length > 0) {
+    // Trouver le jour max dans results.json
+    const refDay  = Math.max(...refEntries.map(([k]) => parseInt(k)));
+    const [ry, rm, rd] = jsonData[String(refDay)].date.split('-').map(Number);
+    const refDate = new Date(ry, rm - 1, rd); // date locale, pas UTC
+
+    allDays.forEach((entry, n) => {
+      if (!entry.date) {
+        // Calculer la date : refDate - (refDay - n) jours
+        const d = new Date(refDate);
+        d.setDate(d.getDate() - (refDay - n));
+        // Formater en local pour éviter le décalage UTC
+        const yyyy = d.getFullYear();
+        const mm   = String(d.getMonth() + 1).padStart(2, '0');
+        const dd   = String(d.getDate()).padStart(2, '0');
+        entry.date = `${yyyy}-${mm}-${dd}`;
+      }
+    });
+  }
+
+  return [...allDays.values()];
+}
+
+// ============================================================
+// RENDU
+// ============================================================
+function renderTable(allData) {
+  const grid   = document.getElementById('cards-grid');
+  const sorted = [...allData].sort((a, b) => b.day - a.day);
+
+  const played = sorted.filter(x => x.result !== null);
+  let yes = 0, no = 0;
+  played.forEach(d => { if (d.result) yes++; else no++; });
+
+  let streak = 0, streakDone = false;
+  const firstResult = played[0]?.result ?? null;
+  for (const d of played) {
+    if (!streakDone && d.result === firstResult) streak++;
+    else streakDone = true;
+  }
+
+  document.getElementById('stat-total').textContent  = played.length;
+  document.getElementById('stat-yes').textContent    = yes;
+  document.getElementById('stat-no').textContent     = no;
+  document.getElementById('stat-streak').textContent =
+    streak + (firstResult !== null ? (firstResult ? ' ✓' : ' ✗') : '');
+  const sc = document.getElementById('section-count');
+  if (sc) sc.textContent = allData.length + ' jours';
+
+  grid.innerHTML = '';
+  sorted.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'card' + (d.today ? ' today-card' : '');
+
+    // Badge résultat
+    let badgeHtml = '';
+    if (d.result === true)       badgeHtml = '<span class="badge yes">✓ Spider-Man</span>';
+    else if (d.result === false) badgeHtml = '<span class="badge no">✗ Pas lui</span>';
+    else                         badgeHtml = '<span class="badge archive">— Archive</span>';
+
+    // Image
+    const imgHtml = d.screenshot
+      ? `<div class="card-img" onclick="openLightbox('${d.screenshot}')"><img src="${d.screenshot}" alt="Day ${d.day}" loading="lazy"></div>`
+      : `<div class="card-img"><span class="card-img-empty">Pas d'image</span></div>`;
+
+    // Tweet
+    const tweetHtml = d.result !== null ? (() => {
+      const emoji = d.result ? '✅' : '❌';
+      const txt = encodeURIComponent(
+        `${emoji} Day ${d.day}: Spider-Man ${d.result ? 'IS' : 'is NOT'} the character of the day! #Marveldle #SpiderMan`
+      );
+      return `<div class="card-foot"><a class="btn-tweet" href="https://twitter.com/intent/tweet?text=${txt}" target="_blank">↗ Tweet</a></div>`;
+    })() : '';
+
+    card.innerHTML = `
+      ${imgHtml}
+      <div class="card-body">
+        <div class="card-top">
+          <div class="card-day">${d.day}</div>
+          ${d.today ? '<span class="today-tag">aujourd&#39;hui</span>' : ''}
+        </div>
+        <div class="card-date">${d.date ? formatDate(d.date) : '—'}</div>
+        ${badgeHtml}
+        ${tweetHtml}
+      </div>`;
+
+    grid.appendChild(card);
+  });
+}
+
+function formatDate(iso) {
+  const [y, m, d] = iso.split('-');
+  const months = ['jan','fév','mar','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
+  return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
+}
+
+function openLightbox(src) {
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightbox-img').src = '';
+}
+document.getElementById('lightbox').addEventListener('click', e => {
+  if (e.target === document.getElementById('lightbox')) closeLightbox();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeLightbox();
+});
+
+// Init
+loadData().then(renderTable);
+
+// ── Theme toggle ──────────────────────────────────────────
+const ICON_MOON = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+const ICON_SUN  = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+
+function applyTheme(dark) {
+  document.documentElement.classList.toggle('dark', dark);
+  const icon  = document.getElementById('theme-icon');
+  const label = document.getElementById('theme-label');
+  if (!icon || !label) return;
+  icon.innerHTML = dark ? ICON_SUN : ICON_MOON;
+  icon.setAttribute('fill',         dark ? 'none'         : 'currentColor');
+  icon.setAttribute('stroke',       dark ? 'currentColor' : 'none');
+  icon.setAttribute('stroke-width', dark ? '2'            : '0');
+  label.textContent = dark ? 'Light' : 'Dark';
+  try { localStorage.setItem('spideytrack-theme', dark ? 'dark' : 'light'); } catch(e) {}
+}
+
+function toggleTheme() {
+  applyTheme(!document.documentElement.classList.contains('dark'));
+}
+
+// Lire la préférence sauvegardée ou celle du système
+(function() {
+  let saved = null;
+  try { saved = localStorage.getItem('spideytrack-theme'); } catch(e) {}
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved ? saved === 'dark' : prefersDark);
+})();
+</script>
+
+<footer>
+  <div class="footer-inner">
+    <span class="footer-text">Un projet de</span>
+    <a href="https://l-oeil-critique.netlify.app/" target="_blank" class="footer-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      L'Œil Critique
+    </a>
+    <span class="footer-sep">·</span>
+    <span class="footer-text">Actualités &amp; Critiques Cinéma et Séries</span>
+  </div>
+</footer>
+</body>
+</html>

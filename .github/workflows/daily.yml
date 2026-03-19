@@ -1,0 +1,38 @@
+name: SpideyTrack — Daily Guess
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # Tous les jours à 2h00 UTC
+  workflow_dispatch:        # Lancement manuel depuis GitHub si besoin
+
+jobs:
+  daily-guess:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install playwright requests
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Run daily guess
+        run: python tweet.py
+
+      - name: Commit & push results
+        run: |
+          git config user.name  "SpideyTrack Bot"
+          git config user.email "bot@spideytrack"
+          git add results.json images/
+          git diff --staged --quiet || git commit -m "Day $(cat day.txt) — $(date '+%Y-%m-%d')"
+          git push
