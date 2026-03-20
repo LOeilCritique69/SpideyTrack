@@ -155,7 +155,8 @@ for char in CHARACTERS:
             print(f"    · {title} → {cls}")
 
         is_match = all("exact" in cls for _, cls in square_info)
-        print(f"  {'✅ C\'est lui !' if is_match else '❌ Pas lui.'}")
+        verdict = "✅ C'est lui !" if is_match else "❌ Pas lui."
+        print(f"  {verdict}")
 
         page.screenshot(path=shot_path)
         print(f"  📸 {shot_path}")
