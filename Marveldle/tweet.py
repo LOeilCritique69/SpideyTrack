@@ -70,12 +70,34 @@ if os.path.exists(screenshot_path):
 
 with sync_playwright() as p:
     is_ci   = os.environ.get('CI') == 'true'
-    browser = p.chromium.launch(headless=is_ci)
-    page    = browser.new_page()
-    page.goto(URL)
+    browser = p.chromium.launch(
+        headless=is_ci,
+        args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+    )
+    context = browser.new_context(
+        user_agent=(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        viewport={"width": 1280, "height": 800},
+    )
+    page = context.new_page()
+    page.goto(URL, wait_until="networkidle")
 
-    page.fill("input[placeholder=\"Guess today's character\"]", GUESS_PREFIX)
+    # Attendre l'input
+    page.wait_for_selector("input[placeholder=\"Guess today's character\"]", timeout=15000)
+    time.sleep(1)
+
+    # Taper lettre par lettre (simulation humaine)
+    page.click("input[placeholder=\"Guess today's character\"]")
+    page.type("input[placeholder=\"Guess today's character\"]", GUESS_PREFIX, delay=80)
+    time.sleep(1.5)
+
+    # Attendre le dropdown Spider-Man
+    page.wait_for_selector("span.option-name:has-text('Spider-Man')", timeout=10000)
     page.click("span.option-name:has-text('Spider-Man')")
+    time.sleep(0.5)
     page.click("button.btn.btn-primary.search-button")
 
     page.wait_for_selector("div.guess-row.new")
@@ -106,6 +128,7 @@ with sync_playwright() as p:
 
     page.screenshot(path=screenshot_path)
     print(f"📸 Screenshot : {screenshot_path}")
+    context.close()
     browser.close()
 
 # ════════════════════════════════════════════════════════════════
