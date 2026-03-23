@@ -13,5 +13,15 @@
     "date": "2026-03-21",
     "result": false,
     "screenshot": "marveldle/images/day_037.png"
+  },
+  "38": {
+    "date": "2026-03-22",
+    "result": false,
+    "screenshot": "marveldle/images/day_038.png"
+  },
+  "39": {
+    "date": "2026-03-23",
+    "result": false,
+    "screenshot": "marveldle/images/day_039.png"
   }
 }

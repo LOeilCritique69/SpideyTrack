@@ -3,5 +3,10 @@
     "date": "2026-03-21",
     "result": false,
     "screenshot": "marveldle/images_tobey/day_001.png"
+  },
+  "2": {
+    "date": "2026-03-23",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_002.png"
   }
 }
