@@ -26,7 +26,7 @@ CHARACTERS = [
         "option":      "Spider-Man (Rageful Vigilante Spider-Man Universe)",
         "images_dir":  "marveldle/images_andrew",
         "results_file":"marveldle/results_andrew.json",
-        "day_file":    "day-andrew.txt",
+        "day_file":    "day_andrew.txt",
     },
     {
         "key":         "tobey",
@@ -86,10 +86,6 @@ for char in CHARACTERS:
     # Vérifier doublon
     if str(today_day) in results:
         print(f"  ⚠️  Jour {today_day} déjà dans {char['results_file']} — skip.")
-        # Incrémenter quand même le day_file pour ne pas rester bloqué
-        with open(char["day_file"], "w") as f:
-            f.write(str(today_day + 1))
-        print(f"  📅 Prochain jour {char['label']} : {today_day + 1}")
         continue
 
     # Créer le dossier images si besoin

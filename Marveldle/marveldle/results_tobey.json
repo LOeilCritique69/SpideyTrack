@@ -5,8 +5,18 @@
     "screenshot": "marveldle/images_tobey/day_001.png"
   },
   "2": {
-    "date": "2026-03-23",
+    "date": "2026-03-22",
     "result": false,
     "screenshot": "marveldle/images_tobey/day_002.png"
+  },
+  "3": {
+    "date": "2026-03-23",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_003.png"
+  },
+  "4": {
+    "date": "2026-03-24",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_004.png"
   }
 }
