@@ -710,5 +710,21 @@
     "score": 3,
     "exact": 3,
     "partial": 1
+  },
+  "90": {
+    "date": "2026-03-31",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_090.png",
+    "score": 3,
+    "exact": 3,
+    "partial": 1
+  },
+  "91": {
+    "date": "2026-04-01",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_091.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 1
   }
 }
