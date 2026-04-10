@@ -44,7 +44,7 @@ jobs:
           git add Marveldle/marveldle/images_andrew/
           git add Marveldle/marveldle/images_tobey/
           git add Marveldle/day.txt
-          git add Marveldle/day_andrew.txt
+          git add Marveldle/day-andrew.txt
           git add Marveldle/day_tobey.txt
           git diff --staged --quiet || git commit -m "Day $(cat Marveldle/day.txt) — $(date '+%Y-%m-%d')"
           git push -f origin main
