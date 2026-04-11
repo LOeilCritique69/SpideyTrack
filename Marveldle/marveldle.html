@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" sizes="32x32" href="spidey.png">
-<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<title>SpideyTrack</title>
-<link rel="stylesheet" href="marveldle.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="spidey.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <title>SpideyTrack</title>
+  <link rel="stylesheet" href="marveldle.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -28,15 +29,11 @@
     </svg>
     <div class="loader-title">Spidey<span>Track</span></div>
   </div>
-
   <div class="loader-sub">À la recherche des Trois Spideys</div>
-
   <div class="loader-bar-wrap">
     <div class="loader-bar" id="loader-bar"></div>
   </div>
-
   <div class="loader-status" id="loader-status">Initialisation…</div>
-
   <div class="loader-steps">
     <div class="loader-step" id="step-tom"><div class="dot"></div>Tom Holland</div>
     <div class="loader-step" id="step-andrew"><div class="dot"></div>Andrew Garfield</div>
@@ -81,9 +78,24 @@
   <div class="top3-wrap" id="top3-wrap">
     <div class="section-header">
       <div class="section-label">Top 5 — Meilleurs guess</div>
-      <div class="section-count">Les plus proches de Spider-Man</div>
+      <div class="section-count">Classement pondéré (exacts + ½ partiels)</div>
     </div>
     <div class="top3-grid" id="top3-container"></div>
+  </div>
+
+  <!-- GRAPHIQUES -->
+  <div class="charts-wrap">
+    <div class="section-header">
+      <div class="section-label">Progression</div>
+      <div class="section-count">Score par partie</div>
+    </div>
+    <div class="charts-tabs">
+      <button class="chart-tab active" onclick="switchChart('tom',this)">Tom Holland</button>
+      <button class="chart-tab" onclick="switchChart('andrew',this)">Andrew Garfield</button>
+      <button class="chart-tab" onclick="switchChart('tobey',this)">Tobey Maguire</button>
+      <button class="chart-tab" onclick="switchChart('compare',this)">Comparatif</button>
+    </div>
+    <div class="chart-container"><canvas id="main-chart"></canvas></div>
   </div>
 
   <!-- TOM HOLLAND -->
@@ -99,6 +111,7 @@
         <span class="spidey-stat-label">fois trouvé</span>
       </div>
     </div>
+    <div class="char-mini-stats" id="tom-mini"></div>
     <div class="cards-grid-wrap">
       <button class="scroll-btn scroll-btn-left" onclick="scrollGrid('grid-tom',-1)">&#8249;</button>
       <div class="cards-grid" id="grid-tom"></div>
@@ -119,6 +132,7 @@
         <span class="spidey-stat-label">fois trouvé</span>
       </div>
     </div>
+    <div class="char-mini-stats" id="andrew-mini"></div>
     <div class="cards-grid-wrap">
       <button class="scroll-btn scroll-btn-left" onclick="scrollGrid('grid-andrew',-1)">&#8249;</button>
       <div class="cards-grid" id="grid-andrew"></div>
@@ -139,12 +153,15 @@
         <span class="spidey-stat-label">fois trouvé</span>
       </div>
     </div>
+    <div class="char-mini-stats" id="tobey-mini"></div>
     <div class="cards-grid-wrap">
       <button class="scroll-btn scroll-btn-left" onclick="scrollGrid('grid-tobey',-1)">&#8249;</button>
       <div class="cards-grid" id="grid-tobey"></div>
       <button class="scroll-btn scroll-btn-right" onclick="scrollGrid('grid-tobey',1)">&#8250;</button>
     </div>
   </div>
+
+
 
 </main>
 
@@ -173,7 +190,7 @@
   </div>
 </footer>
 
-</div><!-- /app-wrapper -->
+</div>
 
 <!-- DISCLAIMER -->
 <div id="disclaimer-overlay">
@@ -219,67 +236,49 @@
   </div>
 </div>
 
-<style>
-/* ── DISCLAIMER ── */
-#disclaimer-overlay { display:none; position:fixed; inset:0; background:rgba(13,11,9,.82); z-index:700; align-items:center; justify-content:center; animation:vfade .3s ease; }
-#disclaimer-overlay.open { display:flex; }
-#disclaimer-box { background:var(--paper-warm); border:2px solid var(--ink); padding:32px 36px; max-width:420px; width:90%; position:relative; box-shadow:6px 6px 0 var(--ink); }
-#disclaimer-close { position:absolute; top:12px; right:14px; background:none; border:none; color:var(--dust); font-size:1rem; cursor:pointer; font-family:var(--cond); font-weight:700; }
-#disclaimer-close:hover { color:var(--red); }
-.disclaimer-title { font-family:var(--cond); font-size:1.8rem; font-weight:900; letter-spacing:.04em; color:var(--ink); margin-bottom:12px; text-transform:uppercase; }
-.disclaimer-text { font-family:var(--mono); font-size:.72rem; color:var(--dust); line-height:1.7; margin-bottom:20px; }
-.disclaimer-text a { color:var(--red); text-decoration:none; }
-#disclaimer-ok { background:var(--ink); color:var(--paper); border:none; padding:10px 22px; font-family:var(--mono); font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:background .14s; }
-#disclaimer-ok:hover { background:var(--red); }
-
-/* ── VICTOIRE ── */
-#victory-canvas { position:fixed; inset:0; pointer-events:none; z-index:500; width:100%; height:100%; }
-#victory-overlay { display:none; position:fixed; inset:0; background:rgba(13,11,9,.82); z-index:600; align-items:center; justify-content:center; animation:vfade .35s ease; }
-#victory-overlay.open { display:flex; }
-@keyframes vfade { from{opacity:0}to{opacity:1} }
-#victory-box { background:var(--paper-warm); border:2px solid var(--red); padding:40px 48px; text-align:center; animation:vpop .45s cubic-bezier(.34,1.56,.64,1); max-width:360px; width:90%; box-shadow:6px 6px 0 var(--red); }
-@keyframes vpop { from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1} }
-#victory-spider { width:80px; height:80px; margin:0 auto 16px; animation:vspin .6s cubic-bezier(.34,1.56,.64,1) .2s both; }
-@keyframes vspin { from{transform:scale(0) rotate(-180deg)}to{transform:scale(1) rotate(0)} }
-#victory-title { font-family:var(--cond); font-size:3rem; font-weight:900; letter-spacing:.04em; color:var(--red); line-height:1; margin-bottom:8px; text-transform:uppercase; }
-#victory-sub { font-family:var(--mono); font-size:.65rem; color:var(--dust); text-transform:uppercase; letter-spacing:.1em; margin-bottom:24px; line-height:1.8; }
-#victory-close { background:var(--ink); color:var(--paper); border:none; padding:10px 24px; font-family:var(--mono); font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:background .15s,transform .1s; }
-#victory-close:hover { background:var(--red); }
-#victory-close:active { transform:scale(.96); }
-</style>
-
 <script>
 // ============================================================
-// TOP 5
+// DONNÉES INJECTÉES PAR LE SCRIPT PYTHON
 // ============================================================
 const TOP5 = [
-  { screenshot: "marveldle/images/day_017.png",        caption: "Jour 17 · Tom Holland · 6/7 exacts", day: 17 },
-  { screenshot: "marveldle/images_andrew/day_043.png", caption: "Jour 43 · Andrew Garfield · 5/7 exacts, 2/7 partiels", day: 43 },
-  { screenshot: "marveldle/images_tobey/day_043.png",  caption: "Jour 43 · Tobey Maguire · 5/7 exacts, 2/7 partiels", day: 43 },
-  { screenshot: "marveldle/images/day_009.png",        caption: "Jour 9 · Tom Holland · 5/7 exacts, 1/7 partiels", day: 9 },
-  { screenshot: "marveldle/images/day_038.png",        caption: "Jour 38 · Tom Holland · 5/7 exacts, 1/7 partiels", day: 38 },
+  { screenshot: "marveldle/images/day_017.png",        caption: "Jour 17 · Tom Holland · 6/7 exacts", day: 17, score: 6, w: 6 },
+  { screenshot: "marveldle/images_andrew/day_043.png", caption: "Jour 43 · Andrew Garfield · 5/7 exacts, 2/7 partiels", day: 43, score: 5, w: 6 },
+  { screenshot: "marveldle/images_tobey/day_043.png",  caption: "Jour 43 · Tobey Maguire · 5/7 exacts, 2/7 partiels", day: 43, score: 5, w: 6 },
+  { screenshot: "marveldle/images/day_009.png",        caption: "Jour 9 · Tom Holland · 5/7 exacts, 1/7 partiels", day: 9, score: 5, w: 5.5 },
+  { screenshot: "marveldle/images/day_038.png",        caption: "Jour 38 · Tom Holland · 5/7 exacts, 1/7 partiels", day: 38, score: 5, w: 5.5 },
 ];
 
+const CHAR_STATS  = {};
 const MANUAL_RESULTS = {};
 
 const CHAR_CONFIG = {
-  tom:    { results: 'marveldle/results.json',        images: 'marveldle/images' },
-  andrew: { results: 'marveldle/results_andrew.json', images: 'marveldle/images_andrew' },
-  tobey:  { results: 'marveldle/results_tobey.json',  images: 'marveldle/images_tobey' },
+  tom:    { results: 'marveldle/results.json',        images: 'marveldle/images',        color: '#e8503a', label: 'Tom Holland' },
+  andrew: { results: 'marveldle/results_andrew.json', images: 'marveldle/images_andrew', color: '#3a8be8', label: 'Andrew Garfield' },
+  tobey:  { results: 'marveldle/results_tobey.json',  images: 'marveldle/images_tobey',  color: '#3ae87a', label: 'Tobey Maguire' },
 };
 
+const CHAR_COLORS = { tom: '#e8503a', andrew: '#3a8be8', tobey: '#3ae87a' };
+
 // ============================================================
-// LOADER HELPERS
+// LOADER
 // ============================================================
 const loaderBar    = document.getElementById('loader-bar');
 const loaderStatus = document.getElementById('loader-status');
 
-function setProgress(pct, label) {
-  loaderBar.style.width = pct + '%';
-  if (label) loaderStatus.textContent = label;
+function setProgress(pct, label) { 
+  loaderBar.style.width = pct + '%'; 
+  if (label) loaderStatus.textContent = label; 
 }
-function stepActive(id)  { document.getElementById(id).classList.add('active'); }
-function stepDone(id)    { const el=document.getElementById(id); el.classList.remove('active'); el.classList.add('done'); }
+
+function stepActive(id) { 
+  document.getElementById(id).classList.add('active'); 
+}
+
+function stepDone(id) { 
+  const el = document.getElementById(id); 
+  el.classList.remove('active'); 
+  el.classList.add('done'); 
+}
 
 function hideLoader() {
   const screen = document.getElementById('loading-screen');
@@ -293,46 +292,54 @@ function hideLoader() {
 // FETCH
 // ============================================================
 async function fetchJson(url) {
-  try { const r = await fetch(url); if (r.ok) return await r.json(); } catch (_) {}
+  try { 
+    const r = await fetch(url); 
+    if (r.ok) return await r.json(); 
+  } catch(_) {}
   return {};
 }
 
 async function loadOneChar(key, manualResults, onDone) {
   const cfg      = CHAR_CONFIG[key];
   const jsonData = await fetchJson(cfg.results);
-
-  const jsonKeys   = Object.keys(jsonData).map(Number);
-  const manualKeys = manualResults ? Object.keys(manualResults).map(Number) : [];
-  const toCheck    = [...new Set([...jsonKeys, ...manualKeys])];
+  const toCheck  = [...new Set([
+    ...Object.keys(jsonData).map(Number),
+    ...(manualResults ? Object.keys(manualResults).map(Number) : []),
+  ])];
 
   const foundImages = new Set();
   await Promise.all(toCheck.map(async n => {
     try {
       const r = await fetch(`${cfg.images}/day_${String(n).padStart(3,'0')}.png`, { method: 'HEAD' });
       if (r.ok) foundImages.add(n);
-    } catch (_) {}
+    } catch(_) {}
   }));
 
   const allDays = new Map();
-
   if (manualResults) {
     for (const [k, result] of Object.entries(manualResults)) {
       const n = parseInt(k);
-      allDays.set(n, { day:n, date:null, result, screenshot: foundImages.has(n) ? `${cfg.images}/day_${String(n).padStart(3,'0')}.png` : null, today:false });
+      allDays.set(n, { day:n, date:null, result, screenshot: foundImages.has(n) ? `${cfg.images}/day_${String(n).padStart(3,'0')}.png` : null, today:false, score:0, exact:0, partial:0 });
     }
   }
 
-  const d = new Date();
+  const d        = new Date();
   const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
   for (const [k, val] of Object.entries(jsonData)) {
     const n = parseInt(k);
-    allDays.set(n, { day:n, date:val.date, result:val.result, screenshot: foundImages.has(n) ? `${cfg.images}/day_${String(n).padStart(3,'0')}.png` : null, today: val.date===todayStr });
+    allDays.set(n, {
+      day:n, date:val.date, result:val.result,
+      screenshot: foundImages.has(n) ? `${cfg.images}/day_${String(n).padStart(3,'0')}.png` : null,
+      today: val.date === todayStr,
+      score: val.score||0, exact: val.exact||0, partial: val.partial||0,
+      weighted: val.weighted_score||val.score||0,
+    });
   }
 
   const refEntries = Object.entries(jsonData);
   if (refEntries.length > 0) {
-    const refDay = Math.max(...refEntries.map(([k]) => parseInt(k)));
+    const refDay  = Math.max(...refEntries.map(([k]) => parseInt(k)));
     const [ry,rm,rd] = jsonData[String(refDay)].date.split('-').map(Number);
     const refDate = new Date(ry, rm-1, rd);
     allDays.forEach((entry, n) => {
@@ -348,35 +355,133 @@ async function loadOneChar(key, manualResults, onDone) {
   return [...allDays.values()];
 }
 
+// Fonction principale pour charger toutes les données
 async function loadData() {
   setProgress(5, 'Connexion aux données…');
-
   stepActive('step-tom');
-  const tom = await loadOneChar('tom', MANUAL_RESULTS, () => { stepDone('step-tom'); setProgress(30, 'Tom Holland chargé…'); stepActive('step-andrew'); });
-
-  const andrew = await loadOneChar('andrew', null, () => { stepDone('step-andrew'); setProgress(55, 'Andrew Garfield chargé…'); stepActive('step-tobey'); });
-
-  const tobey = await loadOneChar('tobey', null, () => { stepDone('step-tobey'); setProgress(78, 'Tobey Maguire chargé…'); stepActive('step-img'); });
-
-  setProgress(92, 'Rendu des grilles…');
+  const tom    = await loadOneChar('tom',    MANUAL_RESULTS, () => { stepDone('step-tom');    setProgress(30,'Tom Holland chargé…');     stepActive('step-andrew'); });
+  const andrew = await loadOneChar('andrew', null,           () => { stepDone('step-andrew'); setProgress(55,'Andrew Garfield chargé…'); stepActive('step-tobey'); });
+  const tobey  = await loadOneChar('tobey',  null,           () => { stepDone('step-tobey');  setProgress(78,'Tobey Maguire chargé…');   stepActive('step-img'); });
+  setProgress(92, 'Rendu…');
   return { tom, andrew, tobey };
 }
 
+// Fonction pour tout charger et masquer le loader une fois terminé
+async function runAll() {
+  await loadData(); // Charge tout
+  // Ici, vous pouvez également attendre que toutes les images soient réellement chargées si besoin
+  // Par exemple, si vous avez des images dans le DOM, vous pouvez attendre leur chargement
+
+  // Après tout est chargé
+  hideLoader();
+}
+
+// Exécuter tout après que la page soit complètement chargée
+window.addEventListener('load', () => {
+  runAll();
+});
+
 // ============================================================
-// STATS
+// STATS GLOBALES
 // ============================================================
 function renderStats(data) {
-  const wins = arr => arr.filter(x => x.result === true).length;
+  const wins      = arr => arr.filter(x => x.result === true).length;
   const tomYes    = wins(data.tom);
   const andrewYes = wins(data.andrew);
   const tobeyYes  = wins(data.tobey);
   const total     = Math.max(data.tom.length, data.andrew.length, data.tobey.length);
-  document.getElementById('stat-total').textContent  = total;
-  document.getElementById('stat-yes').textContent    = tomYes + andrewYes + tobeyYes;
-  document.getElementById('stat-no').textContent     = data.tom.filter(x => x.result === false).length;
-  document.getElementById('tom-yes').textContent     = tomYes;
-  document.getElementById('andrew-yes').textContent  = andrewYes;
-  document.getElementById('tobey-yes').textContent   = tobeyYes;
+  const totalWins = tomYes + andrewYes + tobeyYes;
+  const totalAll  = data.tom.length + data.andrew.length + data.tobey.length;
+  document.getElementById('stat-total').textContent   = total;
+  document.getElementById('stat-yes').textContent     = totalWins;
+  document.getElementById('stat-no').textContent      = data.tom.filter(x => x.result === false).length;
+  document.getElementById('tom-yes').textContent      = tomYes;
+  document.getElementById('andrew-yes').textContent   = andrewYes;
+  document.getElementById('tobey-yes').textContent    = tobeyYes;
+}
+
+
+// ============================================================
+// GRAPHIQUES
+// ============================================================
+let mainChart = null;
+let globalData = null;
+
+function switchChart(key, btn) {
+  document.querySelectorAll('.chart-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (globalData) renderMainChart(key);
+}
+
+function renderMainChart(key) {
+  const ctx = document.getElementById('main-chart').getContext('2d');
+  if (mainChart) { mainChart.destroy(); mainChart = null; }
+  const dark      = window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const textColor = dark ? 'rgba(245,240,232,.55)' : 'rgba(13,11,9,.45)';
+  const gridColor = dark ? 'rgba(245,240,232,.06)' : 'rgba(13,11,9,.06)';
+
+  if (key === 'compare') {
+    mainChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: ['tom','andrew','tobey'].map(k => {
+          const sorted = [...globalData[k]].sort((a,b)=>a.day-b.day);
+          return {
+            label: CHAR_CONFIG[k].label,
+            data: sorted.map(d => ({ x: d.day, y: d.score||0 })),
+            borderColor: CHAR_COLORS[k], backgroundColor: 'transparent',
+            borderWidth: 1.5, pointRadius: 2, tension: 0.3,
+          };
+        }),
+      },
+      options: chartOpts(textColor, gridColor, true),
+    });
+  } else {
+    const sorted = [...globalData[key]].sort((a,b)=>a.day-b.day);
+    const c      = CHAR_COLORS[key];
+    mainChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: sorted.map(d => `J${d.day}`),
+        datasets: [
+          {
+            type: 'bar', label: 'Score exacts',
+            data: sorted.map(d => d.score||0),
+            backgroundColor: sorted.map(d => d.result===true ? c : (d.score>=4 ? c+'99' : c+'44')),
+            borderWidth: 0,
+          },
+          {
+            type: 'line', label: 'Tendance (moy. 7j)',
+            data: movingAvg(sorted.map(d => d.score||0), 7),
+            borderColor: c, backgroundColor: 'transparent',
+            borderWidth: 2, borderDash: [4,3], pointRadius: 0, tension: 0.4,
+          },
+        ],
+      },
+      options: chartOpts(textColor, gridColor, false),
+    });
+  }
+}
+
+function movingAvg(data, w) {
+  return data.map((_,i) => {
+    const sl = data.slice(Math.max(0,i-w+1), i+1);
+    return +(sl.reduce((s,v)=>s+v,0)/sl.length).toFixed(2);
+  });
+}
+
+function chartOpts(textColor, gridColor, scatter) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: textColor, font: { family:'monospace', size:11 }, boxWidth:10 } },
+      tooltip: { backgroundColor:'rgba(13,11,9,.9)', titleFont:{ family:'monospace',size:11 }, bodyFont:{ family:'monospace',size:11 } },
+    },
+    scales: {
+      x: { ticks:{ color:textColor, font:{ family:'monospace',size:9 }, maxTicksLimit:20 }, grid:{ color:gridColor }, type: scatter?'linear':'category' },
+      y: { min:0, max:7, ticks:{ color:textColor, font:{ family:'monospace',size:10 }, stepSize:1 }, grid:{ color:gridColor } },
+    },
+  };
 }
 
 // ============================================================
@@ -384,16 +489,14 @@ function renderStats(data) {
 // ============================================================
 function renderTop3() {
   const container = document.getElementById('top3-container');
-  if (!container || !TOP5 || TOP5.length < 5) return;
+  if (!container || !TOP5?.length) return;
   container.innerHTML = '';
-
   const medals = ['🥇','🥈','🥉','#4','#5'];
   TOP5.forEach((item, i) => {
     const card = document.createElement('div');
     card.className = 'top3-card';
-    const rankStyle = i >= 3 ? 'style="font-size:.65rem;top:8px;left:8px;opacity:.5;"' : '';
     card.innerHTML = `
-      <div class="top3-rank" ${rankStyle}>${medals[i]}</div>
+      <div class="top3-rank" ${i>=3?'style="font-size:.65rem;top:8px;left:8px;opacity:.5;"':''}>${medals[i]}</div>
       <div class="top3-img"><img src="${item.screenshot}" loading="lazy"></div>
       <div class="top3-body">
         <div class="top3-day">Jour ${item.day}</div>
@@ -410,62 +513,106 @@ function renderTop3() {
 function renderGrid(entries, charKey, gridId) {
   const grid   = document.getElementById(gridId);
   const sorted = [...entries].sort((a,b) => b.day - a.day);
-  const names  = { tom:'Spider-Man (Tom Holland)', andrew:'Spider-Man (Andrew Garfield)', tobey:'Spider-Man (Tobey Maguire)' };
-
   grid.innerHTML = '';
   sorted.forEach(d => {
     const card = document.createElement('div');
     card.className = 'card' + (d.today ? ' today-card' : '');
-
-    let badge = '';
-    if      (d.result === true)  badge = '<span class="badge yes">✓ C\'est lui</span>';
-    else if (d.result === false) badge = '<span class="badge no">✗ Pas lui</span>';
-    else                         badge = '<span class="badge archive">— Archive</span>';
-
+    const badge = d.result===true  ? '<span class="badge yes">✓ C\'est lui</span>'
+                : d.result===false ? '<span class="badge no">✗ Pas lui</span>'
+                :                    '<span class="badge archive">— Archive</span>';
     const img = d.screenshot
       ? `<div class="card-img" data-src="${d.screenshot}"><img src="${d.screenshot}" alt="Day ${d.day}" loading="lazy"></div>`
       : `<div class="card-img"><span class="card-img-empty">No image</span></div>`;
-
+    const bar = d.score > 0
+      ? `<div style="margin-top:4px;height:2px;background:rgba(13,11,9,.1);border-radius:1px"><div style="height:100%;width:${d.score/7*100}%;background:${CHAR_COLORS[charKey]};border-radius:1px"></div></div>`
+      : '';
     card.innerHTML = `${img}<div class="card-body">
-      <div class="card-top">
-        <div class="card-day">${d.day}</div>
-        ${d.today ? '<span class="today-tag">Today</span>' : ''}
-      </div>
+      <div class="card-top"><div class="card-day">${d.day}</div>${d.today?'<span class="today-tag">Today</span>':''}</div>
       <div class="card-date">${d.date ? formatDate(d.date) : '—'}</div>
+      ${badge}${bar}
     </div>`;
-
     grid.appendChild(card);
   });
-
   grid.querySelectorAll('.card-img[data-src]').forEach(el => {
     el.addEventListener('click', () => openLightbox(el.dataset.src));
   });
 }
 
+// ============================================================
+// TIMELINE
+// ============================================================
+let timelineData = [], timelineFilter = 'all', timelineShown = 30;
+
+function buildTimeline(data) {
+  const all = [];
+  ['tom','andrew','tobey'].forEach(key => {
+    data[key].forEach(d => all.push({ ...d, charKey:key, charLabel:CHAR_CONFIG[key].label }));
+  });
+  timelineData = all.sort((a,b) => (b.date&&a.date ? b.date.localeCompare(a.date) : b.day-a.day));
+  renderTimeline();
+}
+
+function setTimelineFilter(filter, btn) {
+  timelineFilter = filter; timelineShown = 30;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTimeline();
+}
+
+function renderTimeline() {
+  const list     = document.getElementById('timeline-list');
+  list.innerHTML = '';
+  const filtered = timelineData.filter(d => {
+    if (timelineFilter==='found')  return d.result===true;
+    if (timelineFilter==='miss')   return d.result===false;
+    if (timelineFilter==='tom')    return d.charKey==='tom';
+    if (timelineFilter==='andrew') return d.charKey==='andrew';
+    if (timelineFilter==='tobey')  return d.charKey==='tobey';
+    return true;
+  });
+  filtered.slice(0, timelineShown).forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'tl-item';
+    const thumb = d.screenshot
+      ? `<img class="tl-img-thumb" src="${d.screenshot}" loading="lazy" onclick="openLightbox('${d.screenshot}')">`
+      : '<div style="width:44px;height:32px;background:rgba(13,11,9,.06)"></div>';
+    row.innerHTML = `
+      ${thumb}
+      <div class="tl-day">J.${d.day}</div>
+      <div class="tl-char" style="color:${CHAR_COLORS[d.charKey]}">${d.charLabel}</div>
+      <div><span class="tl-badge ${d.result===true?'yes':'no'}">${d.result===true?'✓ Trouvé':'✗ Raté'}</span></div>
+      <div class="tl-date">${d.date ? formatDate(d.date) : '—'}</div>
+      <div class="tl-score">${d.score>0 ? d.score+'/7' : '—'}</div>`;
+    list.appendChild(row);
+  });
+  const btn = document.getElementById('timeline-more');
+  if (filtered.length <= timelineShown) btn.classList.add('hidden');
+  else btn.classList.remove('hidden');
+}
+
+function loadMoreTimeline() { timelineShown += 30; renderTimeline(); }
+
+// ============================================================
+// UTILITAIRES
+// ============================================================
 function formatDate(iso) {
   const [y,m,d] = iso.split('-');
   const months = ['jan','fév','mar','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
   return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
 }
-
-// ============================================================
-// LIGHTBOX
-// ============================================================
-function openLightbox(src)  { document.getElementById('lightbox-img').src=src; document.getElementById('lightbox').classList.add('open'); }
-function closeLightbox()    { document.getElementById('lightbox').classList.remove('open'); document.getElementById('lightbox-img').src=''; }
+function openLightbox(src) { document.getElementById('lightbox-img').src=src; document.getElementById('lightbox').classList.add('open'); }
+function closeLightbox()   { document.getElementById('lightbox').classList.remove('open'); document.getElementById('lightbox-img').src=''; }
 document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
 document.getElementById('lightbox').addEventListener('click', e => { if(e.target===document.getElementById('lightbox')) closeLightbox(); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeLightbox(); });
+function scrollGrid(id, dir) { document.getElementById(id).scrollBy({ left: dir*500, behavior:'smooth' }); }
 
 // ============================================================
 // VICTOIRE
 // ============================================================
 function triggerVictory(data) {
-  const winners = [];
   const names   = { tom:'Tom Holland', andrew:'Andrew Garfield', tobey:'Tobey Maguire' };
-  ['tom','andrew','tobey'].forEach(k => {
-    if (data[k]?.find(d => d.today && d.result === true)) winners.push(names[k]);
-  });
+  const winners = ['tom','andrew','tobey'].filter(k => data[k]?.find(d => d.today && d.result===true)).map(k => names[k]);
   if (!winners.length) return;
   document.getElementById('victory-sub').textContent = winners.join('\n');
   startParticles();
@@ -475,7 +622,6 @@ function triggerVictory(data) {
     stopParticles();
   });
 }
-
 let animFrame = null;
 function startParticles() {
   const canvas=document.getElementById('victory-canvas'), ctx=canvas.getContext('2d');
@@ -505,27 +651,20 @@ function initDisclaimer(){
 initDisclaimer();
 
 // ============================================================
-// SCROLL
-// ============================================================
-function scrollGrid(id, dir) {
-  document.getElementById(id).scrollBy({ left: dir * 500, behavior: 'smooth' });
-}
-
-// ============================================================
 // INIT
 // ============================================================
 loadData().then(data => {
+  globalData = data;
   renderStats(data);
   renderTop3();
   renderGrid(data.tom,    'tom',    'grid-tom');
   renderGrid(data.andrew, 'andrew', 'grid-andrew');
   renderGrid(data.tobey,  'tobey',  'grid-tobey');
+  setProgress(96, 'Graphiques…');
+  renderMainChart('tom');
   setProgress(100, 'Prêt !');
   stepDone('step-img');
-  setTimeout(() => {
-    hideLoader();
-    triggerVictory(data);
-  }, 450);
+  setTimeout(() => { hideLoader(); triggerVictory(data); }, 450);
 });
 </script>
 </body>

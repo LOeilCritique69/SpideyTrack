@@ -798,5 +798,14 @@
     "score": 3,
     "exact": 3,
     "partial": 1
+  },
+  "101": {
+    "date": "2026-04-11",
+    "result": false,
+    "screenshot": "marveldle/images_andrew/day_101.png",
+    "score": 4,
+    "exact": 4,
+    "partial": 2,
+    "weighted_score": 5.0
   }
 }
