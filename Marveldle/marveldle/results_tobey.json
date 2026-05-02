@@ -807,5 +807,185 @@
     "exact": 4,
     "partial": 2,
     "weighted_score": 5.0
+  },
+  "102": {
+    "date": "2026-04-12",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_102.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 1,
+    "weighted_score": 2.5
+  },
+  "103": {
+    "date": "2026-04-13",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_103.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 1,
+    "weighted_score": 2.5
+  },
+  "104": {
+    "date": "2026-04-14",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_104.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 0,
+    "weighted_score": 2.0
+  },
+  "105": {
+    "date": "2026-04-15",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_105.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 3,
+    "weighted_score": 3.5
+  },
+  "106": {
+    "date": "2026-04-16",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_106.png",
+    "score": 4,
+    "exact": 4,
+    "partial": 0,
+    "weighted_score": 4.0
+  },
+  "107": {
+    "date": "2026-04-17",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_107.png",
+    "score": 5,
+    "exact": 5,
+    "partial": 1,
+    "weighted_score": 5.5
+  },
+  "108": {
+    "date": "2026-04-18",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_108.png",
+    "score": 3,
+    "exact": 3,
+    "partial": 1,
+    "weighted_score": 3.5
+  },
+  "109": {
+    "date": "2026-04-19",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_109.png",
+    "score": 1,
+    "exact": 1,
+    "partial": 1,
+    "weighted_score": 1.5
+  },
+  "110": {
+    "date": "2026-04-20",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_110.png",
+    "score": 4,
+    "exact": 4,
+    "partial": 1,
+    "weighted_score": 4.5
+  },
+  "111": {
+    "date": "2026-04-21",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_111.png",
+    "score": 3,
+    "exact": 3,
+    "partial": 1,
+    "weighted_score": 3.5
+  },
+  "112": {
+    "date": "2026-04-22",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_112.png",
+    "score": 4,
+    "exact": 4,
+    "partial": 1,
+    "weighted_score": 4.5
+  },
+  "113": {
+    "date": "2026-04-23",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_113.png",
+    "score": 3,
+    "exact": 3,
+    "partial": 2,
+    "weighted_score": 4.0
+  },
+  "114": {
+    "date": "2026-04-24",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_114.png",
+    "score": 1,
+    "exact": 1,
+    "partial": 0,
+    "weighted_score": 1.0
+  },
+  "115": {
+    "date": "2026-04-25",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_115.png",
+    "score": 3,
+    "exact": 3,
+    "partial": 1,
+    "weighted_score": 3.5
+  },
+  "116": {
+    "date": "2026-04-26",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_116.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 0,
+    "weighted_score": 2.0
+  },
+  "117": {
+    "date": "2026-04-27",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_117.png",
+    "score": 3,
+    "exact": 3,
+    "partial": 0,
+    "weighted_score": 3.0
+  },
+  "118": {
+    "date": "2026-04-28",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_118.png",
+    "score": 3,
+    "exact": 3,
+    "partial": 1,
+    "weighted_score": 3.5
+  },
+  "119": {
+    "date": "2026-04-30",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_119.png",
+    "score": 5,
+    "exact": 5,
+    "partial": 1,
+    "weighted_score": 5.5
+  },
+  "120": {
+    "date": "2026-05-01",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_120.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 1,
+    "weighted_score": 2.5
+  },
+  "121": {
+    "date": "2026-05-02",
+    "result": false,
+    "screenshot": "marveldle/images_tobey/day_121.png",
+    "score": 3,
+    "exact": 3,
+    "partial": 2,
+    "weighted_score": 4.0
   }
 }

@@ -161,8 +161,6 @@
     </div>
   </div>
 
-
-
 </main>
 
 <div id="lightbox">
@@ -238,16 +236,8 @@
 
 <script>
 // ============================================================
-// DONNÉES INJECTÉES PAR LE SCRIPT PYTHON
+// CONFIG PERSOS (plus de TOP5 statique)
 // ============================================================
-const TOP5 = [
-  { screenshot: "marveldle/images/day_017.png",        caption: "Jour 17 · Tom Holland · 6/7 exacts", day: 17, score: 6, w: 6 },
-  { screenshot: "marveldle/images_andrew/day_043.png", caption: "Jour 43 · Andrew Garfield · 5/7 exacts, 2/7 partiels", day: 43, score: 5, w: 6 },
-  { screenshot: "marveldle/images_tobey/day_043.png",  caption: "Jour 43 · Tobey Maguire · 5/7 exacts, 2/7 partiels", day: 43, score: 5, w: 6 },
-  { screenshot: "marveldle/images/day_009.png",        caption: "Jour 9 · Tom Holland · 5/7 exacts, 1/7 partiels", day: 9, score: 5, w: 5.5 },
-  { screenshot: "marveldle/images/day_038.png",        caption: "Jour 38 · Tom Holland · 5/7 exacts, 1/7 partiels", day: 38, score: 5, w: 5.5 },
-];
-
 const CHAR_STATS  = {};
 const MANUAL_RESULTS = {};
 
@@ -260,6 +250,35 @@ const CHAR_CONFIG = {
 const CHAR_COLORS = { tom: '#e8503a', andrew: '#3a8be8', tobey: '#3ae87a' };
 
 // ============================================================
+// TOP 5 DYNAMIQUE
+// ============================================================
+function buildTop5(data) {
+  // Un seul slot par numéro de jour — même puzzle pour les 3 persos,
+  // donc on garde uniquement le meilleur score du jour (peu importe le perso).
+  const byDay = new Map();
+
+  ['tom', 'andrew', 'tobey'].forEach(key => {
+    data[key].forEach(d => {
+      const exact   = d.exact   ?? d.score ?? 0;
+      const partial = d.partial ?? 0;
+      const w       = exact + partial * 0.5;
+      if (!d.screenshot || w === 0) return;
+
+      const existing = byDay.get(d.day);
+      if (!existing || w > existing.w || (w === existing.w && exact > existing.score)) {
+        let caption = `Jour ${d.day} · ${CHAR_CONFIG[key].label} · ${exact}/7 exacts`;
+        if (partial > 0) caption += `, ${partial}/7 partiels`;
+        byDay.set(d.day, { screenshot: d.screenshot, caption, day: d.day, score: exact, partial, w });
+      }
+    });
+  });
+
+  return [...byDay.values()]
+    .sort((a, b) => b.w - a.w || b.score - a.score || a.day - b.day)
+    .slice(0, 5);
+}
+
+// ============================================================
 // LOADER
 // ============================================================
 const loaderBar    = document.getElementById('loader-bar');
@@ -269,17 +288,8 @@ function setProgress(pct, label) {
   loaderBar.style.width = pct + '%'; 
   if (label) loaderStatus.textContent = label; 
 }
-
-function stepActive(id) { 
-  document.getElementById(id).classList.add('active'); 
-}
-
-function stepDone(id) { 
-  const el = document.getElementById(id); 
-  el.classList.remove('active'); 
-  el.classList.add('done'); 
-}
-
+function stepActive(id) { document.getElementById(id).classList.add('active'); }
+function stepDone(id)   { const el = document.getElementById(id); el.classList.remove('active'); el.classList.add('done'); }
 function hideLoader() {
   const screen = document.getElementById('loading-screen');
   const app    = document.getElementById('app-wrapper');
@@ -292,10 +302,7 @@ function hideLoader() {
 // FETCH
 // ============================================================
 async function fetchJson(url) {
-  try { 
-    const r = await fetch(url); 
-    if (r.ok) return await r.json(); 
-  } catch(_) {}
+  try { const r = await fetch(url); if (r.ok) return await r.json(); } catch(_) {}
   return {};
 }
 
@@ -333,7 +340,7 @@ async function loadOneChar(key, manualResults, onDone) {
       screenshot: foundImages.has(n) ? `${cfg.images}/day_${String(n).padStart(3,'0')}.png` : null,
       today: val.date === todayStr,
       score: val.score||0, exact: val.exact||0, partial: val.partial||0,
-      weighted: val.weighted_score||val.score||0,
+      weighted: val.weighted_score || val.score || 0,
     });
   }
 
@@ -355,7 +362,6 @@ async function loadOneChar(key, manualResults, onDone) {
   return [...allDays.values()];
 }
 
-// Fonction principale pour charger toutes les données
 async function loadData() {
   setProgress(5, 'Connexion aux données…');
   stepActive('step-tom');
@@ -365,21 +371,6 @@ async function loadData() {
   setProgress(92, 'Rendu…');
   return { tom, andrew, tobey };
 }
-
-// Fonction pour tout charger et masquer le loader une fois terminé
-async function runAll() {
-  await loadData(); // Charge tout
-  // Ici, vous pouvez également attendre que toutes les images soient réellement chargées si besoin
-  // Par exemple, si vous avez des images dans le DOM, vous pouvez attendre leur chargement
-
-  // Après tout est chargé
-  hideLoader();
-}
-
-// Exécuter tout après que la page soit complètement chargée
-window.addEventListener('load', () => {
-  runAll();
-});
 
 // ============================================================
 // STATS GLOBALES
@@ -391,7 +382,6 @@ function renderStats(data) {
   const tobeyYes  = wins(data.tobey);
   const total     = Math.max(data.tom.length, data.andrew.length, data.tobey.length);
   const totalWins = tomYes + andrewYes + tobeyYes;
-  const totalAll  = data.tom.length + data.andrew.length + data.tobey.length;
   document.getElementById('stat-total').textContent   = total;
   document.getElementById('stat-yes').textContent     = totalWins;
   document.getElementById('stat-no').textContent      = data.tom.filter(x => x.result === false).length;
@@ -399,7 +389,6 @@ function renderStats(data) {
   document.getElementById('andrew-yes').textContent   = andrewYes;
   document.getElementById('tobey-yes').textContent    = tobeyYes;
 }
-
 
 // ============================================================
 // GRAPHIQUES
@@ -485,14 +474,14 @@ function chartOpts(textColor, gridColor, scatter) {
 }
 
 // ============================================================
-// TOP 5
+// TOP 5 — RENDU
 // ============================================================
-function renderTop3() {
+function renderTop3(items) {
   const container = document.getElementById('top3-container');
-  if (!container || !TOP5?.length) return;
+  if (!container || !items?.length) return;
   container.innerHTML = '';
   const medals = ['🥇','🥈','🥉','#4','#5'];
-  TOP5.forEach((item, i) => {
+  items.forEach((item, i) => {
     const card = document.createElement('div');
     card.className = 'top3-card';
     card.innerHTML = `
@@ -537,60 +526,6 @@ function renderGrid(entries, charKey, gridId) {
     el.addEventListener('click', () => openLightbox(el.dataset.src));
   });
 }
-
-// ============================================================
-// TIMELINE
-// ============================================================
-let timelineData = [], timelineFilter = 'all', timelineShown = 30;
-
-function buildTimeline(data) {
-  const all = [];
-  ['tom','andrew','tobey'].forEach(key => {
-    data[key].forEach(d => all.push({ ...d, charKey:key, charLabel:CHAR_CONFIG[key].label }));
-  });
-  timelineData = all.sort((a,b) => (b.date&&a.date ? b.date.localeCompare(a.date) : b.day-a.day));
-  renderTimeline();
-}
-
-function setTimelineFilter(filter, btn) {
-  timelineFilter = filter; timelineShown = 30;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderTimeline();
-}
-
-function renderTimeline() {
-  const list     = document.getElementById('timeline-list');
-  list.innerHTML = '';
-  const filtered = timelineData.filter(d => {
-    if (timelineFilter==='found')  return d.result===true;
-    if (timelineFilter==='miss')   return d.result===false;
-    if (timelineFilter==='tom')    return d.charKey==='tom';
-    if (timelineFilter==='andrew') return d.charKey==='andrew';
-    if (timelineFilter==='tobey')  return d.charKey==='tobey';
-    return true;
-  });
-  filtered.slice(0, timelineShown).forEach(d => {
-    const row = document.createElement('div');
-    row.className = 'tl-item';
-    const thumb = d.screenshot
-      ? `<img class="tl-img-thumb" src="${d.screenshot}" loading="lazy" onclick="openLightbox('${d.screenshot}')">`
-      : '<div style="width:44px;height:32px;background:rgba(13,11,9,.06)"></div>';
-    row.innerHTML = `
-      ${thumb}
-      <div class="tl-day">J.${d.day}</div>
-      <div class="tl-char" style="color:${CHAR_COLORS[d.charKey]}">${d.charLabel}</div>
-      <div><span class="tl-badge ${d.result===true?'yes':'no'}">${d.result===true?'✓ Trouvé':'✗ Raté'}</span></div>
-      <div class="tl-date">${d.date ? formatDate(d.date) : '—'}</div>
-      <div class="tl-score">${d.score>0 ? d.score+'/7' : '—'}</div>`;
-    list.appendChild(row);
-  });
-  const btn = document.getElementById('timeline-more');
-  if (filtered.length <= timelineShown) btn.classList.add('hidden');
-  else btn.classList.remove('hidden');
-}
-
-function loadMoreTimeline() { timelineShown += 30; renderTimeline(); }
 
 // ============================================================
 // UTILITAIRES
@@ -656,7 +591,7 @@ initDisclaimer();
 loadData().then(data => {
   globalData = data;
   renderStats(data);
-  renderTop3();
+  renderTop3(buildTop5(data));   // ← Top 5 calculé dynamiquement
   renderGrid(data.tom,    'tom',    'grid-tom');
   renderGrid(data.andrew, 'andrew', 'grid-andrew');
   renderGrid(data.tobey,  'tobey',  'grid-tobey');
