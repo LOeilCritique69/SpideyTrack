@@ -987,5 +987,203 @@
     "exact": 3,
     "partial": 3,
     "weighted_score": 4.5
+  },
+  "122": {
+    "date": "2026-05-03",
+    "result": false,
+    "screenshot": "marveldle/images/day_122.png",
+    "score": 3,
+    "exact": 3,
+    "partial": 2,
+    "weighted_score": 4.0
+  },
+  "123": {
+    "date": "2026-05-04",
+    "result": false,
+    "screenshot": "marveldle/images/day_123.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 2,
+    "weighted_score": 3.0
+  },
+  "124": {
+    "date": "2026-05-05",
+    "result": false,
+    "screenshot": "marveldle/images/day_124.png",
+    "score": 4,
+    "exact": 4,
+    "partial": 0,
+    "weighted_score": 4.0
+  },
+  "125": {
+    "date": "2026-05-06",
+    "result": false,
+    "screenshot": "marveldle/images/day_125.png",
+    "score": 3,
+    "exact": 3,
+    "partial": 2,
+    "weighted_score": 4.0
+  },
+  "126": {
+    "date": "2026-05-07",
+    "result": false,
+    "screenshot": "marveldle/images/day_126.png",
+    "score": 1,
+    "exact": 1,
+    "partial": 2,
+    "weighted_score": 2.0
+  },
+  "127": {
+    "date": "2026-05-08",
+    "result": false,
+    "screenshot": "marveldle/images/day_127.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 1,
+    "weighted_score": 2.5
+  },
+  "128": {
+    "date": "2026-05-09",
+    "result": false,
+    "screenshot": "marveldle/images/day_128.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 3,
+    "weighted_score": 3.5
+  },
+  "129": {
+    "date": "2026-05-10",
+    "result": false,
+    "screenshot": "marveldle/images/day_129.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 2,
+    "weighted_score": 3.0
+  },
+  "130": {
+    "date": "2026-05-11",
+    "result": false,
+    "screenshot": "marveldle/images/day_130.png",
+    "score": 4,
+    "exact": 4,
+    "partial": 1,
+    "weighted_score": 4.5
+  },
+  "131": {
+    "date": "2026-05-12",
+    "result": false,
+    "screenshot": "marveldle/images/day_131.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 1,
+    "weighted_score": 2.5
+  },
+  "132": {
+    "date": "2026-05-13",
+    "result": false,
+    "screenshot": "marveldle/images/day_132.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 1,
+    "weighted_score": 2.5
+  },
+  "133": {
+    "date": "2026-05-14",
+    "result": false,
+    "screenshot": "marveldle/images/day_133.png",
+    "score": 1,
+    "exact": 1,
+    "partial": 1,
+    "weighted_score": 1.5
+  },
+  "134": {
+    "date": "2026-05-15",
+    "result": false,
+    "screenshot": "marveldle/images/day_134.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 1,
+    "weighted_score": 2.5
+  },
+  "135": {
+    "date": "2026-05-16",
+    "result": false,
+    "screenshot": "marveldle/images/day_135.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 0,
+    "weighted_score": 2.0
+  },
+  "136": {
+    "date": "2026-05-17",
+    "result": false,
+    "screenshot": "marveldle/images/day_136.png",
+    "score": 3,
+    "exact": 3,
+    "partial": 1,
+    "weighted_score": 3.5
+  },
+  "137": {
+    "date": "2026-05-18",
+    "result": false,
+    "screenshot": "marveldle/images/day_137.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 1,
+    "weighted_score": 2.5
+  },
+  "138": {
+    "date": "2026-05-19",
+    "result": false,
+    "screenshot": "marveldle/images/day_138.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 1,
+    "weighted_score": 2.5
+  },
+  "139": {
+    "date": "2026-05-20",
+    "result": false,
+    "screenshot": "marveldle/images/day_139.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 1,
+    "weighted_score": 2.5
+  },
+  "140": {
+    "date": "2026-05-21",
+    "result": false,
+    "screenshot": "marveldle/images/day_140.png",
+    "score": 1,
+    "exact": 1,
+    "partial": 1,
+    "weighted_score": 1.5
+  },
+  "141": {
+    "date": "2026-05-22",
+    "result": false,
+    "screenshot": "marveldle/images/day_141.png",
+    "score": 0,
+    "exact": 0,
+    "partial": 1,
+    "weighted_score": 0.5
+  },
+  "142": {
+    "date": "2026-05-23",
+    "result": false,
+    "screenshot": "marveldle/images/day_142.png",
+    "score": 2,
+    "exact": 2,
+    "partial": 0,
+    "weighted_score": 2.0
+  },
+  "143": {
+    "date": "2026-05-24",
+    "result": false,
+    "screenshot": "marveldle/images/day_143.png",
+    "score": 6,
+    "exact": 6,
+    "partial": 0,
+    "weighted_score": 6.0
   }
 }

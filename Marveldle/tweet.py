@@ -115,11 +115,6 @@ if os.path.exists(TODAY_FILE):
             print("✅ Script déjà lancé aujourd'hui. Rien à faire.")
             exit()
 
-# Marquer immédiatement — même si le script crash plus bas,
-# on ne rejouera pas le même jour au prochain lancement.
-with open(TODAY_FILE, "w") as f:
-    f.write(today_iso)
-
 # ════════════════════════════════════════════════════════════════
 # 2. JOUER chaque personnage (avec retry)
 # ════════════════════════════════════════════════════════════════
@@ -152,20 +147,12 @@ for char in CHARACTERS:
                     print(f"  ⚠️ JSON corrompu dans {char['results_file']}, réinitialisation.")
                     results = {}
 
-    # Vérifier doublon par numéro de jour ET par date
-    already_by_day  = str(today_day) in results
-    already_by_date = any(v.get("date") == today_iso for v in results.values())
-    if already_by_day or already_by_date:
-        reason = f"jour {today_day} déjà enregistré" if already_by_day else f"date {today_iso} déjà jouée"
-        print(f"  ⚠️  {reason} dans {char['results_file']} — skip.")
-        if not already_by_day:
-            # Le jour a changé mais la date est déjà là : on cherche quel jour c'était
-            matched_day = next(k for k, v in results.items() if v.get("date") == today_iso)
-            print(f"  ℹ️  Date trouvée au jour {matched_day}.")
-        else:
-            with open(char["day_file"], "w") as f:
-                f.write(str(today_day + 1))
-            print(f"  📅 Prochain jour {char['label']} : {today_day + 1}")
+    # Vérifier doublon
+    if str(today_day) in results:
+        print(f"  ⚠️  Jour {today_day} déjà dans {char['results_file']} — skip.")
+        with open(char["day_file"], "w") as f:
+            f.write(str(today_day + 1))
+        print(f"  📅 Prochain jour {char['label']} : {today_day + 1}")
         run_report.append({
             "char": char["label"], "day": today_day,
             "status": "skipped", "result": None, "score": None
@@ -248,7 +235,24 @@ for char in CHARACTERS:
                     square_info.append((title, cls))
                     print(f"    · {title} → {cls}")
 
-                is_match = all("exact" in cls for _, cls in square_info)
+                # ── FIX FAUX POSITIF ────────────────────────────────
+                # Andrew et Tobey ont les mêmes caractéristiques :
+                # 7/7 exacts ne suffit pas. On lit tout le texte de la page
+                # pour détecter la bannière "pas celui que l'on cherche".
+                all_exact = all("exact" in cls for _, cls in square_info)
+
+                page_text = page.inner_text("body")
+                is_wrong_char = (
+                    "pas celui que l'on cherche" in page_text
+                    or "today's character isn't this one" in page_text.lower()
+                )
+                print(f"  🔍 Bannière faux positif : {'OUI' if is_wrong_char else 'NON'}")
+
+                is_match = all_exact and not is_wrong_char
+
+                if all_exact and is_wrong_char:
+                    print(f"  ⚠️  7/7 exacts MAIS faux positif — mauvais Spider-Man")
+                # ────────────────────────────────────────────────────
                 page.screenshot(path=shot_path)
                 print(f"  📸 {shot_path}")
                 context.close()
@@ -323,11 +327,15 @@ for char in CHARACTERS:
 # ════════════════════════════════════════════════════════════════
 # 3. STATS ENRICHIES pour injection HTML
 # ════════════════════════════════════════════════════════════════
-def build_char_stats():
+def build_stats_payload():
     """
-    Construit CHAR_STATS uniquement (streaks, win_rate, avg_score, history).
-    Le TOP5 est désormais calculé dynamiquement côté JS dans le HTML.
+    Construit un objet JS avec toutes les données enrichies pour le site :
+    - TOP5 mis à jour (score pondéré)
+    - Streaks par personnage
+    - Historique complet (pour graphiques + timeline)
+    - Comparatif
     """
+    all_candidates = []
     char_stats = {}
 
     for char in CHARACTERS:
@@ -348,6 +356,7 @@ def build_char_stats():
         wins        = sum(1 for v in data.values() if v.get("result") is True)
         total       = len(data)
 
+        # Historique trié pour graphiques
         history = []
         for k, v in sorted(data.items(), key=lambda x: int(x[0])):
             history.append({
@@ -371,11 +380,37 @@ def build_char_stats():
             "history":     history,
         }
 
-    return char_stats
+        # Candidats top5
+        for day_key, val in data.items():
+            score   = val.get("score", 0)
+            partial = val.get("partial", 0)
+            w       = val.get("weighted_score", score)
+            if score == 0:
+                continue
+            caption = f"Jour {day_key} · {char['label']} · {score}/7 exacts"
+            if partial > 0:
+                caption += f", {partial}/7 partiels"
+            all_candidates.append({
+                "screenshot": val.get("screenshot", ""),
+                "caption":    caption,
+                "day":        int(day_key),
+                "score":      score,
+                "partial":    partial,
+                "w":          w,
+            })
+
+    # TOP 5 pondéré
+    sorted_top = sorted(
+        all_candidates,
+        key=lambda x: (x["w"], x["partial"]),
+        reverse=True
+    )[:5]
+
+    return sorted_top, char_stats
 
 
 # ════════════════════════════════════════════════════════════════
-# 4. METTRE À JOUR LE HTML (CHAR_STATS uniquement)
+# 4. METTRE À JOUR LE HTML
 # ════════════════════════════════════════════════════════════════
 def update_html():
     html_file = "marveldle/marveldle.html"
@@ -384,25 +419,30 @@ def update_html():
         return
 
     import re
-    char_stats = build_char_stats()
+    top5, char_stats = build_stats_payload()
 
     with open(html_file, "r", encoding="utf-8") as f:
         html_content = f.read()
 
+    # ── TOP5 ────────────────────────────────────────────────────
+    js_lines = []
+    for i, entry in enumerate(top5):
+        comma = "," if i < len(top5) - 1 else ""
+        js_lines.append(
+            f'    {{ screenshot: "{entry["screenshot"]}", caption: "{entry["caption"]}", '
+            f'day: {entry["day"]}, score: {entry["score"]}, w: {entry["w"]} }}{comma}'
+        )
+    new_top5 = "const TOP5 = [\n" + "\n".join(js_lines) + "\n];"
+    html_content = re.sub(r'const TOP\d\s*=\s*\[.*?\];', new_top5, html_content, flags=re.DOTALL)
+
     # ── CHAR_STATS (streaks, win_rate, avg_score, history) ──────
-    # Le TOP5 n'est plus injecté ici : buildTop5(data) côté JS le calcule
-    # dynamiquement depuis les résultats chargés au runtime.
     stats_json = json.dumps(char_stats, ensure_ascii=False, separators=(',', ':'))
     new_stats  = f"const CHAR_STATS = {stats_json};"
 
     if "const CHAR_STATS" in html_content:
-        html_content = re.sub(
-            r'const CHAR_STATS\s*=\s*\{.*?\};',
-            new_stats,
-            html_content,
-            flags=re.DOTALL
-        )
+        html_content = re.sub(r'const CHAR_STATS\s*=\s*\{.*?\};', new_stats, html_content, flags=re.DOTALL)
     else:
+        # Injecter juste avant la fermeture du 1er <script>
         html_content = html_content.replace(
             "const MANUAL_RESULTS",
             new_stats + "\n\nconst MANUAL_RESULTS"
@@ -411,7 +451,7 @@ def update_html():
     with open(html_file, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    print(f"✅ HTML mis à jour (CHAR_STATS).")
+    print(f"✅ HTML mis à jour (TOP5 + CHAR_STATS).")
     print(f"   Streaks : " + " | ".join(
         f"{c['label']}: {char_stats.get(c['key'], {}).get('streak', 0)} 🔥"
         for c in CHARACTERS
@@ -439,7 +479,7 @@ for r in run_report:
 print(f"\n{'─'*55}")
 print("  📊 STATS GLOBALES")
 print(f"{'─'*55}")
-char_stats = build_char_stats()
+_, char_stats = build_stats_payload()
 for char in CHARACTERS:
     s = char_stats.get(char["key"], {})
     if not s:
@@ -450,5 +490,11 @@ for char in CHARACTERS:
     print(f"    Parties : {s.get('total', 0)} | Wins : {s.get('wins', 0)} ({s.get('win_rate', 0)}%)")
     print(f"    Score moyen : {s.get('avg_score', 0)}/7 | Streak actuel : {streak} {flame} | Meilleur streak : {s.get('best_streak', 0)}")
 print(f"{'─'*55}")
+
+# ════════════════════════════════════════════════════════════════
+# 6. MARQUER last_run.txt
+# ════════════════════════════════════════════════════════════════
+with open(TODAY_FILE, "w") as f:
+    f.write(today_iso)
 
 print("\n🏁 Terminé.")
