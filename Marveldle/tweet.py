@@ -1,184 +1,258 @@
-from playwright.sync_api import sync_playwright
-import os
-import json
-import time
+#!/usr/bin/env python3
+"""
+SpideyTrack — Daily Guess Runner
+════════════════════════════════════════════════════════════════════════════
+
+Joue automatiquement le Marveldle du jour pour les 3 variantes de Spider-Man
+suivies (Tom Holland, Andrew Garfield, Tobey Maguire), et persiste le résultat
+dans une base de données JSON unique.
+
+ARCHITECTURE (v2)
+------------------
+Avant, chaque personnage avait son propre fichier de "jour" (day.txt,
+day-andrew.txt, day_tobey.txt), son propre results_*.json, plus un
+history.csv et un last_run.txt séparés. Résultat : ces fichiers pouvaient
+diverger silencieusement (ce qui est arrivé : le workflow GitHub Actions
+ne commitait jamais history.csv ni last_run.txt, qui sont restés bloqués
+pendant que results.json continuait d'avancer).
+
+Ce script repose maintenant sur exactement DEUX fichiers, tous les deux
+sous marveldle/ :
+
+  - state.json      → { "current_day": int, "last_run_date": "YYYY-MM-DD" }
+                       LE compteur de jour, partagé par les 3 personnages
+                       (ils jouent toujours le même numéro de jour).
+
+  - database.json    → { "days": { "<day>": { "date": ..., "chars": {
+                         "tom": {...}, "andrew": {...}, "tobey": {...} } } } }
+                       LA base de données unique, lue directement par le
+                       frontend (plus d'injection HTML fragile par regex).
+
+Un vrai système de vérification protège contre la dérive :
+  1. Avant de jouer : le jour "attendu" est recalculé depuis database.json
+     (max des jours déjà enregistrés + 1). Si state.json ne correspond
+     pas, on se corrige automatiquement et on log un WARNING.
+  2. Après écriture : on relit database.json depuis le disque et on
+     vérifie que le jour joué est bien présent avec les bonnes clés.
+     Si ce n'est pas le cas, on n'avance PAS state.json et on sort en
+     erreur (code 1) — le run GitHub Actions passe au rouge au lieu de
+     dériver en silence.
+
+USAGE
+-----
+    python tweet.py                  Run normal (1 jour, les 3 persos)
+    python tweet.py --dry-run        Simule sans rien écrire ni jouer
+    python tweet.py --force          Ignore le garde-fou "déjà joué aujourd'hui"
+    python tweet.py --only tom       Ne joue qu'un seul personnage
+    python tweet.py --day 150        Force un numéro de jour (rattrapage/debug)
+    python tweet.py --export-csv out.csv   Exporte database.json en CSV
+"""
+
+from __future__ import annotations
+
+import argparse
 import datetime
-import csv
+import json
+import logging
+import os
+import sys
+import time
 import traceback
+from dataclasses import dataclass, field
+from typing import Optional
+
+from playwright.sync_api import sync_playwright, Page
+
+# ════════════════════════════════════════════════════════════════════════
+# CONFIG
+# ════════════════════════════════════════════════════════════════════════
 
 URL = "https://marveldle.com/character/audiovisual/guess"
 
-# ════════════════════════════════════════════════════════════════
-# CONFIG
-# ════════════════════════════════════════════════════════════════
-CHARACTERS = [
-    {
-        "key":         "tom",
-        "label":       "Tom Holland",
-        "prefix":      "Spider-Ma",
-        "option":      "Spider-Man",
-        "color":       "#e8503a",
-        "images_dir":  "marveldle/images",
-        "results_file":"marveldle/results.json",
-        "day_file":    "day.txt",
-    },
-    {
-        "key":         "andrew",
-        "label":       "Andrew Garfield",
-        "prefix":      "Spider-Man (R",
-        "option":      "Spider-Man (Rageful Vigilante Spider-Man Universe)",
-        "color":       "#3a8be8",
-        "images_dir":  "marveldle/images_andrew",
-        "results_file":"marveldle/results_andrew.json",
-        "day_file":    "day-andrew.txt",
-    },
-    {
-        "key":         "tobey",
-        "label":       "Tobey Maguire",
-        "prefix":      "Spider-Man (O",
-        "option":      "Spider-Man (Organic Webbing Spider-Man Universe)",
-        "color":       "#3ae87a",
-        "images_dir":  "marveldle/images_tobey",
-        "results_file":"marveldle/results_tobey.json",
-        "day_file":    "day_tobey.txt",
-    },
-]
-
-TODAY_FILE  = "last_run.txt"
-CSV_FILE    = "marveldle/history.csv"
-MAX_RETRIES = 2
-
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-os.chdir(SCRIPT_DIR)
+DB_DIR = os.path.join(SCRIPT_DIR, "marveldle")
+STATE_FILE = os.path.join(DB_DIR, "state.json")
+DATABASE_FILE = os.path.join(DB_DIR, "database.json")
+HTML_FILE = os.path.join(DB_DIR, "marveldle.html")
 
-today     = datetime.date.today()
-today_iso = today.isoformat()
+MAX_RETRIES = 2
+RETRY_BACKOFF_SECONDS = (3, 8)  # backoff croissant entre tentatives
+SQUARE_WAIT_TIMEOUT = 10        # secondes d'attente des 7 cases de similarité
+POST_GUESS_ANIMATION_WAIT = 10  # secondes d'attente de l'animation du site
+MIN_SCREENSHOT_BYTES = 2048     # en dessous de ça, le screenshot est suspect
 
-# ════════════════════════════════════════════════════════════════
-# UTILITAIRES
-# ════════════════════════════════════════════════════════════════
 
-def weighted_score(exact, partial):
-    """Score sur 7 : exacts = 1pt, partiels = 0.5pt"""
-    return exact + partial * 0.5
+@dataclass(frozen=True)
+class CharacterConfig:
+    key: str            # clé interne stable (tom / andrew / tobey)
+    label: str          # nom affiché
+    prefix: str         # texte tapé dans le champ de recherche
+    option: str         # libellé exact de l'option à cliquer
+    images_dir: str     # dossier des screenshots (relatif à marveldle/)
 
-def compute_streak(results: dict) -> int:
-    """Nombre de jours consécutifs (depuis le dernier) où result=True."""
-    if not results:
-        return 0
-    days_sorted = sorted(results.items(), key=lambda x: int(x[0]), reverse=True)
-    streak = 0
-    for _, val in days_sorted:
-        if val.get("result") is True:
-            streak += 1
-        else:
-            break
-    return streak
 
-def compute_best_streak(results: dict) -> int:
-    """Meilleur streak historique."""
-    if not results:
-        return 0
-    days_sorted = sorted(results.items(), key=lambda x: int(x[0]))
-    best = cur = 0
-    for _, val in days_sorted:
-        if val.get("result") is True:
-            cur += 1
-            best = max(best, cur)
-        else:
-            cur = 0
-    return best
+CHARACTERS: tuple[CharacterConfig, ...] = (
+    CharacterConfig(
+        key="tom", label="Tom Holland", prefix="Spider-Ma",
+        option="Spider-Man", images_dir="images",
+    ),
+    CharacterConfig(
+        key="andrew", label="Andrew Garfield", prefix="Spider-Man (R",
+        option="Spider-Man (Rageful Vigilante Spider-Man Universe)",
+        images_dir="images_andrew",
+    ),
+    CharacterConfig(
+        key="tobey", label="Tobey Maguire", prefix="Spider-Man (O",
+        option="Spider-Man (Organic Webbing Spider-Man Universe)",
+        images_dir="images_tobey",
+    ),
+)
+CHARACTERS_BY_KEY = {c.key: c for c in CHARACTERS}
 
-def compute_avg_score(results: dict) -> float:
-    scores = [v.get("score", 0) for v in results.values() if v.get("score", 0) > 0]
-    return round(sum(scores) / len(scores), 2) if scores else 0.0
 
-def append_csv(row: dict):
-    """Ajoute une ligne dans le CSV global."""
-    os.makedirs(os.path.dirname(CSV_FILE), exist_ok=True)
-    file_exists = os.path.exists(CSV_FILE)
-    with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=[
-            "date", "character", "day", "result",
-            "exact", "partial", "score", "weighted_score", "screenshot"
-        ])
-        if not file_exists:
-            writer.writeheader()
-        writer.writerow(row)
+# ════════════════════════════════════════════════════════════════════════
+# LOGGING
+# ════════════════════════════════════════════════════════════════════════
 
-# ════════════════════════════════════════════════════════════════
-# 1. VÉRIFIER si déjà lancé aujourd'hui
-# ════════════════════════════════════════════════════════════════
-if os.path.exists(TODAY_FILE):
-    with open(TODAY_FILE, "r") as f:
-        if f.read().strip() == today_iso:
-            print("✅ Script déjà lancé aujourd'hui. Rien à faire.")
-            exit()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-7s  %(message)s",
+    datefmt="%H:%M:%S",
+)
+log = logging.getLogger("spideytrack")
 
-# ════════════════════════════════════════════════════════════════
-# 2. JOUER chaque personnage (avec retry)
-# ════════════════════════════════════════════════════════════════
-is_ci = os.environ.get('CI') == 'true'
-run_report = []  # rapport final
 
-for char in CHARACTERS:
-    print(f"\n{'═'*55}")
-    print(f"  {char['label']}")
-    print(f"{'═'*55}")
+# ════════════════════════════════════════════════════════════════════════
+# ÉTAT (state.json) — le compteur de jour unique
+# ════════════════════════════════════════════════════════════════════════
 
-    # Lire le jour actuel
-    if os.path.exists(char["day_file"]):
-        with open(char["day_file"], "r") as f:
-            today_day = int(f.read().strip())
-    else:
-        today_day = 1 if char["key"] != "tom" else 56
+def load_state() -> dict:
+    if not os.path.exists(STATE_FILE):
+        log.warning("state.json introuvable, initialisation à day=1.")
+        return {"current_day": 1, "last_run_date": None}
+    with open(STATE_FILE, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            log.error("state.json corrompu — réinitialisation à day=1.")
+            return {"current_day": 1, "last_run_date": None}
 
-    print(f"  🎯 Jour : {today_day}")
 
-    # Charger results.json
-    results = {}
-    if os.path.exists(char["results_file"]):
-        with open(char["results_file"], "r", encoding="utf-8") as f:
-            raw = f.read().strip()
-            if raw:
-                try:
-                    results = json.loads(raw)
-                except json.JSONDecodeError:
-                    print(f"  ⚠️ JSON corrompu dans {char['results_file']}, réinitialisation.")
-                    results = {}
+def save_state(state: dict) -> None:
+    os.makedirs(DB_DIR, exist_ok=True)
+    tmp_path = STATE_FILE + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2, ensure_ascii=False)
+    os.replace(tmp_path, STATE_FILE)  # écriture atomique
 
-    # Vérifier doublon
-    if str(today_day) in results:
-        print(f"  ⚠️  Jour {today_day} déjà dans {char['results_file']} — skip.")
-        with open(char["day_file"], "w") as f:
-            f.write(str(today_day + 1))
-        print(f"  📅 Prochain jour {char['label']} : {today_day + 1}")
-        run_report.append({
-            "char": char["label"], "day": today_day,
-            "status": "skipped", "result": None, "score": None
-        })
-        continue
 
-    os.makedirs(char["images_dir"], exist_ok=True)
-    shot_path = f"{char['images_dir']}/day_{today_day:03}.png"
+# ════════════════════════════════════════════════════════════════════════
+# BASE DE DONNÉES (database.json)
+# ════════════════════════════════════════════════════════════════════════
+
+def load_database() -> dict:
+    if not os.path.exists(DATABASE_FILE):
+        return {"meta": {"version": 2}, "days": {}}
+    with open(DATABASE_FILE, "r", encoding="utf-8") as f:
+        raw = f.read().strip()
+        if not raw:
+            return {"meta": {"version": 2}, "days": {}}
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            log.error("database.json corrompu — abandon (ne rien écraser).")
+            raise
+
+
+def save_database(db: dict) -> None:
+    os.makedirs(DB_DIR, exist_ok=True)
+    tmp_path = DATABASE_FILE + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(db, f, indent=2, ensure_ascii=False)
+    os.replace(tmp_path, DATABASE_FILE)
+
+
+def expected_next_day(db: dict) -> int:
+    """Le prochain jour à jouer, déduit des données réellement enregistrées.
+
+    C'est la SOURCE DE VÉRITÉ. state.json n'est qu'un cache de cette valeur ;
+    s'il diverge, on lui fait confiance à database.json, pas l'inverse.
+    """
+    days = db.get("days", {})
+    if not days:
+        return 1
+    return max(int(k) for k in days.keys()) + 1
+
+
+def reconcile_day(state: dict, db: dict) -> int:
+    """Vérifie state.json contre database.json et se corrige si besoin.
+
+    Retourne le jour à jouer aujourd'hui.
+    """
+    expected = expected_next_day(db)
+    recorded = state.get("current_day")
+    if recorded != expected:
+        log.warning(
+            "⚠️  Incohérence détectée : state.json annonçait le jour %s, "
+            "mais database.json indique que le prochain jour attendu est %s. "
+            "Auto-correction sur la base de database.json (source de vérité).",
+            recorded, expected,
+        )
+        state["current_day"] = expected
+    return expected
+
+
+# ════════════════════════════════════════════════════════════════════════
+# SCRAPING D'UN PERSONNAGE
+# ════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class GuessResult:
+    success: bool
+    is_match: Optional[bool] = None
+    exact: int = 0
+    partial: int = 0
+    screenshot: Optional[str] = None
+    error: Optional[str] = None
+
+
+def detect_false_positive(page: Page) -> bool:
+    """Andrew Garfield et Tobey Maguire partagent des attributs identiques
+    dans le jeu : un 7/7 exacts ne suffit donc pas à confirmer qu'on a
+    trouvé LE bon personnage. Le site affiche une bannière dédiée quand
+    ce n'est pas le bon Spider-Man malgré un score parfait — on la
+    cherche dans le texte de la page.
+    """
+    page_text = page.inner_text("body").lower()
+    return (
+        "pas celui que l'on cherche" in page_text
+        or "today's character isn't this one" in page_text
+    )
+
+
+def play_character(char: CharacterConfig, day: int, is_ci: bool) -> GuessResult:
+    """Joue le Marveldle du jour pour un personnage donné, avec retries."""
+    images_dir = os.path.join(DB_DIR, char.images_dir)
+    os.makedirs(images_dir, exist_ok=True)
+    shot_path = os.path.join(images_dir, f"day_{day:03}.png")
+    shot_rel_path = f"marveldle/{char.images_dir}/day_{day:03}.png"
     if os.path.exists(shot_path):
         os.remove(shot_path)
 
-    # Tentatives avec retry
-    square_info = []
-    is_match    = False
-    attempt     = 0
-    success     = False
-
-    while attempt <= MAX_RETRIES and not success:
+    last_error = None
+    for attempt in range(MAX_RETRIES + 1):
         if attempt > 0:
-            print(f"  🔄 Retry #{attempt}…")
+            wait = RETRY_BACKOFF_SECONDS[min(attempt - 1, len(RETRY_BACKOFF_SECONDS) - 1)]
+            log.info("  🔄 Retry #%s dans %ss…", attempt, wait)
+            time.sleep(wait)
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(
                     headless=is_ci,
-                    args=['--no-sandbox', '--disable-setuid-sandbox',
-                          '--disable-blink-features=AutomationControlled']
+                    args=[
+                        "--no-sandbox", "--disable-setuid-sandbox",
+                        "--disable-blink-features=AutomationControlled",
+                    ],
                 )
                 context = browser.new_context(
                     user_agent=(
@@ -199,11 +273,11 @@ for char in CHARACTERS:
                 page.click("input[placeholder=\"Guess today's character\"]")
                 page.type(
                     "input[placeholder=\"Guess today's character\"]",
-                    char["prefix"], delay=80
+                    char.prefix, delay=80,
                 )
                 time.sleep(1.5)
 
-                option_selector = f"span.option-name:has-text('{char['option']}')"
+                option_selector = f"span.option-name:has-text('{char.option}')"
                 page.wait_for_selector(option_selector, timeout=10000)
                 page.click(option_selector)
                 time.sleep(0.5)
@@ -211,290 +285,263 @@ for char in CHARACTERS:
                 page.click("button.btn.btn-primary.search-button")
                 page.wait_for_selector("div.guess-row.new")
 
-                squares    = []
+                squares = []
                 start_time = time.time()
                 while True:
                     squares = page.query_selector_all("div.guess-row.new > div.similarity")
                     if len(squares) == 7:
                         break
-                    if time.time() - start_time > 10:
-                        print("  ⏱ Timeout attente squares")
+                    if time.time() - start_time > SQUARE_WAIT_TIMEOUT:
                         break
                     time.sleep(0.2)
 
                 if len(squares) < 7:
-                    raise RuntimeError(f"Seulement {len(squares)}/7 squares trouvés")
+                    raise RuntimeError(f"Seulement {len(squares)}/7 cases trouvées")
 
-                print("  ⏳ Attente animation (10s)…")
-                time.sleep(10)
+                time.sleep(POST_GUESS_ANIMATION_WAIT)
 
                 square_info = []
                 for sq in squares:
-                    cls   = sq.get_attribute("class")
-                    title = sq.get_attribute("title")
+                    cls = sq.get_attribute("class") or ""
+                    title = sq.get_attribute("title") or ""
                     square_info.append((title, cls))
-                    print(f"    · {title} → {cls}")
+                    log.info("    · %s → %s", title, cls)
 
-                # ── FIX FAUX POSITIF ────────────────────────────────
-                # Andrew et Tobey ont les mêmes caractéristiques :
-                # 7/7 exacts ne suffit pas. On lit tout le texte de la page
-                # pour détecter la bannière "pas celui que l'on cherche".
                 all_exact = all("exact" in cls for _, cls in square_info)
-
-                page_text = page.inner_text("body")
-                is_wrong_char = (
-                    "pas celui que l'on cherche" in page_text
-                    or "today's character isn't this one" in page_text.lower()
-                )
-                print(f"  🔍 Bannière faux positif : {'OUI' if is_wrong_char else 'NON'}")
-
+                is_wrong_char = detect_false_positive(page)
                 is_match = all_exact and not is_wrong_char
-
                 if all_exact and is_wrong_char:
-                    print(f"  ⚠️  7/7 exacts MAIS faux positif — mauvais Spider-Man")
-                # ────────────────────────────────────────────────────
+                    log.info("  ⚠️  7/7 exacts MAIS faux positif détecté — mauvais Spider-Man.")
+
                 page.screenshot(path=shot_path)
-                print(f"  📸 {shot_path}")
                 context.close()
                 browser.close()
-                success = True
 
-        except Exception as e:
-            attempt += 1
-            print(f"  ❌ Erreur : {e}")
-            if attempt > MAX_RETRIES:
-                print(f"  🚫 Abandon après {MAX_RETRIES} retries.")
+                if not os.path.exists(shot_path) or os.path.getsize(shot_path) < MIN_SCREENSHOT_BYTES:
+                    raise RuntimeError(
+                        f"Screenshot suspect (absent ou < {MIN_SCREENSHOT_BYTES} octets)"
+                    )
+
+                exact_count = sum(1 for _, cls in square_info if "exact" in cls)
+                partial_count = sum(1 for _, cls in square_info if "partial" in cls)
+
+                return GuessResult(
+                    success=True, is_match=is_match,
+                    exact=exact_count, partial=partial_count,
+                    screenshot=shot_rel_path,
+                )
+
+        except Exception as e:  # noqa: BLE001 — on veut catcher large ici, on retry
+            last_error = str(e)
+            log.error("  ❌ Erreur : %s", e)
+            if attempt == MAX_RETRIES:
                 traceback.print_exc()
-            else:
-                time.sleep(3)
 
-    if not success:
-        run_report.append({
-            "char": char["label"], "day": today_day,
-            "status": "error", "result": None, "score": None
-        })
-        continue
+    return GuessResult(success=False, error=last_error)
 
-    # Calculs
-    exact_count   = sum(1 for _, cls in square_info if "exact"   in cls)
-    partial_count = sum(1 for _, cls in square_info if "partial" in cls)
-    score         = exact_count
-    w_score       = weighted_score(exact_count, partial_count)
-    verdict       = "✅ C'est lui !" if is_match else "❌ Pas lui."
-    print(f"  {verdict}")
-    print(f"  📊 Score : {exact_count}/7 exacts, {partial_count}/7 partiels (pondéré: {w_score})")
 
-    # Sauvegarde JSON
-    results[str(today_day)] = {
-        "date":           today_iso,
-        "result":         is_match,
-        "screenshot":     shot_path,
-        "score":          score,
-        "exact":          exact_count,
-        "partial":        partial_count,
-        "weighted_score": w_score,
-    }
-    with open(char["results_file"], "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-    print(f"  ✅ {char['results_file']} mis à jour.")
+# ════════════════════════════════════════════════════════════════════════
+# STATS (dérivées de database.json, pour le récap console uniquement —
+# le frontend calcule les siennes lui-même à partir de database.json)
+# ════════════════════════════════════════════════════════════════════════
 
-    # Export CSV
-    append_csv({
-        "date":           today_iso,
-        "character":      char["label"],
-        "day":            today_day,
-        "result":         is_match,
-        "exact":          exact_count,
-        "partial":        partial_count,
-        "score":          score,
-        "weighted_score": w_score,
-        "screenshot":     shot_path,
-    })
-    print(f"  📄 CSV mis à jour ({CSV_FILE})")
-
-    # Incrémenter le jour
-    with open(char["day_file"], "w") as f:
-        f.write(str(today_day + 1))
-    print(f"  📅 Prochain jour {char['label']} : {today_day + 1}")
-
-    run_report.append({
-        "char": char["label"], "day": today_day,
-        "status": "ok", "result": is_match,
-        "score": score, "weighted": w_score,
-        "exact": exact_count, "partial": partial_count,
-    })
-
-# ════════════════════════════════════════════════════════════════
-# 3. STATS ENRICHIES pour injection HTML
-# ════════════════════════════════════════════════════════════════
-def build_stats_payload():
-    """
-    Construit un objet JS avec toutes les données enrichies pour le site :
-    - TOP5 mis à jour (score pondéré)
-    - Streaks par personnage
-    - Historique complet (pour graphiques + timeline)
-    - Comparatif
-    """
-    all_candidates = []
-    char_stats = {}
-
-    for char in CHARACTERS:
-        if not os.path.exists(char["results_file"]):
-            char_stats[char["key"]] = {}
+def compute_streak(db: dict, key: str) -> int:
+    days = sorted(db.get("days", {}).items(), key=lambda kv: -int(kv[0]))
+    streak = 0
+    for _, entry in days:
+        c = entry.get("chars", {}).get(key)
+        if c is None:
             continue
+        if c.get("result") is True:
+            streak += 1
+        else:
+            break
+    return streak
 
-        with open(char["results_file"], "r", encoding="utf-8") as f:
-            try:
-                data = json.load(f)
-            except Exception:
-                char_stats[char["key"]] = {}
+
+def compute_win_rate(db: dict, key: str) -> tuple[int, int, float]:
+    days = db.get("days", {}).values()
+    total = sum(1 for d in days if d.get("chars", {}).get(key) is not None)
+    wins = sum(1 for d in days if d.get("chars", {}).get(key, {}).get("result") is True)
+    rate = round(wins / total * 100, 1) if total else 0.0
+    return wins, total, rate
+
+
+# ════════════════════════════════════════════════════════════════════════
+# EXPORT CSV (utilitaire à la demande, pas utilisé dans le run quotidien)
+# ════════════════════════════════════════════════════════════════════════
+
+def export_csv(db: dict, out_path: str) -> None:
+    import csv
+    rows = []
+    for day_key, entry in sorted(db.get("days", {}).items(), key=lambda kv: int(kv[0])):
+        for char_key, cdata in entry.get("chars", {}).items():
+            if cdata is None:
                 continue
-
-        streak      = compute_streak(data)
-        best_streak = compute_best_streak(data)
-        avg_score   = compute_avg_score(data)
-        wins        = sum(1 for v in data.values() if v.get("result") is True)
-        total       = len(data)
-
-        # Historique trié pour graphiques
-        history = []
-        for k, v in sorted(data.items(), key=lambda x: int(x[0])):
-            history.append({
-                "day":     int(k),
-                "date":    v.get("date", ""),
-                "result":  v.get("result", False),
-                "score":   v.get("score", 0),
-                "exact":   v.get("exact", 0),
-                "partial": v.get("partial", 0),
-                "w":       v.get("weighted_score", v.get("score", 0)),
-                "img":     v.get("screenshot", ""),
+            rows.append({
+                "day": day_key, "date": entry.get("date"),
+                "character": CHARACTERS_BY_KEY[char_key].label,
+                "result": cdata.get("result"),
+                "exact": cdata.get("exact"), "partial": cdata.get("partial"),
+                "score": cdata.get("score"), "weighted": cdata.get("weighted"),
+                "screenshot": cdata.get("screenshot"),
             })
-
-        char_stats[char["key"]] = {
-            "streak":      streak,
-            "best_streak": best_streak,
-            "avg_score":   avg_score,
-            "wins":        wins,
-            "total":       total,
-            "win_rate":    round(wins / total * 100, 1) if total else 0,
-            "history":     history,
-        }
-
-        # Candidats top5
-        for day_key, val in data.items():
-            score   = val.get("score", 0)
-            partial = val.get("partial", 0)
-            w       = val.get("weighted_score", score)
-            if score == 0:
-                continue
-            caption = f"Jour {day_key} · {char['label']} · {score}/7 exacts"
-            if partial > 0:
-                caption += f", {partial}/7 partiels"
-            all_candidates.append({
-                "screenshot": val.get("screenshot", ""),
-                "caption":    caption,
-                "day":        int(day_key),
-                "score":      score,
-                "partial":    partial,
-                "w":          w,
-            })
-
-    # TOP 5 pondéré
-    sorted_top = sorted(
-        all_candidates,
-        key=lambda x: (x["w"], x["partial"]),
-        reverse=True
-    )[:5]
-
-    return sorted_top, char_stats
+    with open(out_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=[
+            "day", "date", "character", "result",
+            "exact", "partial", "score", "weighted", "screenshot",
+        ])
+        writer.writeheader()
+        writer.writerows(rows)
+    log.info("✅ Export CSV écrit : %s (%s lignes)", out_path, len(rows))
 
 
-# ════════════════════════════════════════════════════════════════
-# 4. METTRE À JOUR LE HTML
-# ════════════════════════════════════════════════════════════════
-def update_html():
-    html_file = "marveldle/marveldle.html"
-    if not os.path.exists(html_file):
-        print("⚠️ marveldle.html introuvable.")
-        return
+# ════════════════════════════════════════════════════════════════════════
+# RUN PRINCIPAL
+# ════════════════════════════════════════════════════════════════════════
 
-    import re
-    top5, char_stats = build_stats_payload()
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="SpideyTrack daily runner")
+    p.add_argument("--dry-run", action="store_true",
+                    help="Simule sans jouer ni écrire aucun fichier.")
+    p.add_argument("--force", action="store_true",
+                    help="Ignore le garde-fou 'déjà joué aujourd'hui'.")
+    p.add_argument("--only", choices=[c.key for c in CHARACTERS],
+                    help="Ne joue qu'un seul personnage.")
+    p.add_argument("--day", type=int,
+                    help="Force un numéro de jour précis (rattrapage / debug).")
+    p.add_argument("--export-csv", metavar="PATH",
+                    help="N'exécute rien : exporte database.json en CSV vers PATH.")
+    return p.parse_args()
 
-    with open(html_file, "r", encoding="utf-8") as f:
-        html_content = f.read()
 
-    # ── TOP5 ────────────────────────────────────────────────────
-    js_lines = []
-    for i, entry in enumerate(top5):
-        comma = "," if i < len(top5) - 1 else ""
-        js_lines.append(
-            f'    {{ screenshot: "{entry["screenshot"]}", caption: "{entry["caption"]}", '
-            f'day: {entry["day"]}, score: {entry["score"]}, w: {entry["w"]} }}{comma}'
+def main() -> int:
+    args = parse_args()
+    os.chdir(SCRIPT_DIR)
+
+    if args.export_csv:
+        db = load_database()
+        export_csv(db, args.export_csv)
+        return 0
+
+    today = datetime.date.today()
+    today_iso = today.isoformat()
+    is_ci = os.environ.get("CI") == "true"
+
+    state = load_state()
+    db = load_database()
+
+    # ── 1. Garde-fou "déjà joué aujourd'hui" ────────────────────────────
+    if not args.force and state.get("last_run_date") == today_iso:
+        log.info("✅ Script déjà lancé aujourd'hui (%s). Rien à faire.", today_iso)
+        return 0
+
+    # ── 2. Vérification / auto-correction du jour ───────────────────────
+    day = args.day if args.day is not None else reconcile_day(state, db)
+    log.info("🎯 Jour à jouer : %s", day)
+
+    if str(day) in db.get("days", {}) and not args.day:
+        log.warning("⚠️  Le jour %s est déjà dans database.json — on avance sans rejouer.", day)
+        if not args.dry_run:
+            state["current_day"] = day + 1
+            state["last_run_date"] = today_iso
+            save_state(state)
+        return 0
+
+    characters = [CHARACTERS_BY_KEY[args.only]] if args.only else list(CHARACTERS)
+
+    if args.dry_run:
+        log.info("🧪 --dry-run : aucun run réel, aucune écriture.")
+        for char in characters:
+            log.info("   [dry-run] jouerait %s pour le jour %s", char.label, day)
+        return 0
+
+    # ── 3. Jouer chaque personnage ───────────────────────────────────────
+    chars_result: dict[str, Optional[dict]] = {}
+    any_success = False
+    for char in characters:
+        log.info("%s", "═" * 55)
+        log.info("  %s", char.label)
+        log.info("%s", "═" * 55)
+
+        result = play_character(char, day, is_ci)
+        if result.success:
+            any_success = True
+            weighted = result.exact + result.partial * 0.5
+            verdict = "✅ C'est lui !" if result.is_match else "❌ Pas lui."
+            log.info("  %s", verdict)
+            log.info(
+                "  📊 Score : %s/7 exacts, %s/7 partiels (pondéré: %s)",
+                result.exact, result.partial, weighted,
+            )
+            chars_result[char.key] = {
+                "result": result.is_match,
+                "exact": result.exact,
+                "partial": result.partial,
+                "score": result.exact,
+                "weighted": weighted,
+                "screenshot": result.screenshot,
+            }
+        else:
+            log.error("  🚫 Abandon pour %s après %s tentatives : %s",
+                      char.label, MAX_RETRIES, result.error)
+            chars_result[char.key] = None
+
+    if not any_success:
+        log.error("🚫 Aucun personnage n'a pu être joué — rien n'est écrit, state.json inchangé.")
+        return 1
+
+    # ── 4. Écriture database.json ────────────────────────────────────────
+    db.setdefault("days", {})[str(day)] = {"date": today_iso, "chars": chars_result}
+    save_database(db)
+
+    # ── 5. Vérification post-écriture (relecture disque) ─────────────────
+    reloaded = load_database()
+    entry = reloaded.get("days", {}).get(str(day))
+    if not entry or set(entry.get("chars", {}).keys()) < {c.key for c in characters if chars_result.get(c.key)}:
+        log.error(
+            "🚫 VÉRIFICATION ÉCHOUÉE : le jour %s n'a pas été correctement persisté dans "
+            "database.json. state.json n'est PAS avancé. Investigation nécessaire.", day,
         )
-    new_top5 = "const TOP5 = [\n" + "\n".join(js_lines) + "\n];"
-    html_content = re.sub(r'const TOP\d\s*=\s*\[.*?\];', new_top5, html_content, flags=re.DOTALL)
+        return 1
 
-    # ── CHAR_STATS (streaks, win_rate, avg_score, history) ──────
-    stats_json = json.dumps(char_stats, ensure_ascii=False, separators=(',', ':'))
-    new_stats  = f"const CHAR_STATS = {stats_json};"
+    log.info("✅ database.json vérifié : jour %s bien enregistré.", day)
 
-    if "const CHAR_STATS" in html_content:
-        html_content = re.sub(r'const CHAR_STATS\s*=\s*\{.*?\};', new_stats, html_content, flags=re.DOTALL)
-    else:
-        # Injecter juste avant la fermeture du 1er <script>
-        html_content = html_content.replace(
-            "const MANUAL_RESULTS",
-            new_stats + "\n\nconst MANUAL_RESULTS"
+    # ── 6. Avancer l'état (seulement si tout est vérifié) ────────────────
+    state["current_day"] = day + 1
+    state["last_run_date"] = today_iso
+    save_state(state)
+    log.info("📅 Prochain jour : %s", day + 1)
+
+    # ── 7. Rapport final ──────────────────────────────────────────────────
+    log.info("%s", "═" * 55)
+    log.info("  📋 RAPPORT DU %s", today_iso)
+    log.info("%s", "═" * 55)
+    for char in characters:
+        r = chars_result.get(char.key)
+        if r is None:
+            log.info("  🚫 %s — erreur, non enregistré", char.label)
+            continue
+        icon = "✅" if r["result"] else "❌"
+        found = "Trouvé !" if r["result"] else "Pas lui"
+        log.info(
+            "  %s %s — %s | %s/7 exacts, %s/7 partiels (pondéré: %s)",
+            icon, char.label, found, r["exact"], r["partial"], r["weighted"],
         )
 
-    with open(html_file, "w", encoding="utf-8") as f:
-        f.write(html_content)
+    log.info("%s", "─" * 55)
+    log.info("  📊 STATS GLOBALES")
+    log.info("%s", "─" * 55)
+    for char in CHARACTERS:
+        wins, total, rate = compute_win_rate(reloaded, char.key)
+        streak = compute_streak(reloaded, char.key)
+        flame = "🔥" * min(streak, 5) if streak else "—"
+        log.info("  %s : %s/%s parties (%s%%) | streak %s %s",
+                  char.label, wins, total, rate, streak, flame)
 
-    print(f"✅ HTML mis à jour (TOP5 + CHAR_STATS).")
-    print(f"   Streaks : " + " | ".join(
-        f"{c['label']}: {char_stats.get(c['key'], {}).get('streak', 0)} 🔥"
-        for c in CHARACTERS
-    ))
+    log.info("🏁 Terminé.")
+    return 0
 
-update_html()
 
-# ════════════════════════════════════════════════════════════════
-# 5. RAPPORT FINAL EN CONSOLE
-# ════════════════════════════════════════════════════════════════
-print(f"\n{'═'*55}")
-print(f"  📋 RAPPORT DU {today_iso}")
-print(f"{'═'*55}")
-for r in run_report:
-    if r["status"] == "skipped":
-        print(f"  ⏭  {r['char']} jour {r['day']} — déjà fait")
-    elif r["status"] == "error":
-        print(f"  🚫 {r['char']} jour {r['day']} — ERREUR")
-    else:
-        icon   = "✅" if r["result"] else "❌"
-        found  = "Trouvé !" if r["result"] else "Pas lui"
-        print(f"  {icon} {r['char']} jour {r['day']} — {found} | {r['exact']}/7 exacts, {r['partial']}/7 partiels (pondéré: {r['weighted']})")
-
-# Stats globales depuis les fichiers
-print(f"\n{'─'*55}")
-print("  📊 STATS GLOBALES")
-print(f"{'─'*55}")
-_, char_stats = build_stats_payload()
-for char in CHARACTERS:
-    s = char_stats.get(char["key"], {})
-    if not s:
-        continue
-    streak = s.get("streak", 0)
-    flame  = "🔥" * min(streak, 5) if streak > 0 else "—"
-    print(f"  {char['label']}")
-    print(f"    Parties : {s.get('total', 0)} | Wins : {s.get('wins', 0)} ({s.get('win_rate', 0)}%)")
-    print(f"    Score moyen : {s.get('avg_score', 0)}/7 | Streak actuel : {streak} {flame} | Meilleur streak : {s.get('best_streak', 0)}")
-print(f"{'─'*55}")
-
-# ════════════════════════════════════════════════════════════════
-# 6. MARQUER last_run.txt
-# ════════════════════════════════════════════════════════════════
-with open(TODAY_FILE, "w") as f:
-    f.write(today_iso)
-
-print("\n🏁 Terminé.")
+if __name__ == "__main__":
+    sys.exit(main())
